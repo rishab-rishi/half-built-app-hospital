@@ -66,3 +66,19 @@ export function validateEvidence(
     },
   };
 }
+
+/** Human-readable label for an evidence ID. Display only; never used for validation. */
+export function describeEvidenceId(id: string): string {
+  const fixed: Record<string, string> = {
+    title: "App title",
+    purpose: "Intended purpose",
+    symptoms: "Reported symptoms",
+  };
+  if (Object.hasOwn(fixed, id)) return fixed[id];
+  const [kind, rest = ""] = id.split(":");
+  if (kind === "stack") return `Stack item ${Number(rest) + 1}`;
+  if (kind === "working") return `Working feature ${Number(rest) + 1}`;
+  if (kind === "error") return `Error excerpt, line ${rest.replace(/^L/, "")}`;
+  if (kind === "answer") return `Your answer to ${rest}`;
+  return "Evidence";
+}
