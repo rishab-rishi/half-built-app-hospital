@@ -20,7 +20,6 @@ export type ExportResult =
   | { ok: false; reason: "too_large" };
 
 // Control chars except tab/newline, plus bidirectional formatting controls.
-// eslint-disable-next-line no-control-regex
 const CONTROL = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g;
 const BIDI = /[؜‎‏‪-‮⁦-⁩]/g;
 
