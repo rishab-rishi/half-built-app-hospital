@@ -72,3 +72,30 @@ test("no horizontal scroll on a chart page", async ({ page }) => {
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
   expect(overflow).toBe(false);
 });
+
+test("live endpoints are switched off by default and say so safely", async ({ request }) => {
+  for (const path of ["/api/session", "/api/triage", "/api/diagnose"]) {
+    const res = await request.post(path, {
+      headers: { origin: "http://localhost:3100" },
+      data: {},
+    });
+    expect(res.status()).toBe(503);
+    expect(res.headers()["cache-control"]).toBe("no-store");
+    const body = await res.json();
+    expect(body.error).toBe("live_disabled");
+    expect(JSON.stringify(body)).not.toMatch(/redis|groq|secret|stack/i);
+  }
+  const get = await request.get("/api/session");
+  expect(get.status()).toBe(405);
+});
+
+test("pages carry the baseline security headers", async ({ request }) => {
+  const res = await request.get("/");
+  const h = res.headers();
+  expect(h["x-content-type-options"]).toBe("nosniff");
+  expect(h["referrer-policy"]).toBe("no-referrer");
+  expect(h["permissions-policy"]).toContain("camera=()");
+  expect(h["x-frame-options"]).toBe("DENY");
+  expect(h["content-security-policy"]).toContain("frame-ancestors 'none'");
+  expect(h["content-security-policy"]).toContain("object-src 'none'");
+});

@@ -45,8 +45,14 @@ export const questionSchema = z.strictObject({
   text: text(300),
   why: text(250),
 });
+// Model-side shape: the id is advisory only. The server assigns q1..q3 after validation.
+export const modelQuestionSchema = z.strictObject({
+  id: z.string().max(40).optional(),
+  text: text(300),
+  why: text(250),
+});
 export const triageOutputSchema = z.strictObject({
-  questions: z.array(questionSchema).max(3),
+  questions: z.array(modelQuestionSchema).max(3),
 });
 export type Question = z.infer<typeof questionSchema>;
 
