@@ -14,13 +14,13 @@ import {
 } from "@/lib/budgets";
 import { hashOf, hmacHex } from "@/lib/crypto";
 import type { AppConfig } from "@/lib/config";
-import { buildEvidenceMap, validateEvidence } from "@/lib/evidence";
+import { buildEvidenceMap } from "@/lib/evidence";
 import { checkHeaders, readJsonBody, type GuardFailure } from "@/lib/guard";
 import type { ModelProvider } from "@/lib/ai";
-import { findUnsafeOutput } from "@/lib/output-checks";
+import { interpretDiagnosis, interpretTriage } from "@/lib/interpret";
 import { diagnoseMessages, PROMPT_VERSION, triageMessages, type ChatMessages } from "@/lib/prompts";
 import type { Store } from "@/lib/redis";
-import { answersSchema, intakeSchema, questionSchema, reportSchema, triageOutputSchema } from "@/lib/schemas";
+import { answersSchema, intakeSchema, questionSchema } from "@/lib/schemas";
 import type { Intake } from "@/lib/schemas";
 import { findLikelySecret } from "@/lib/secrets";
 import {
@@ -266,14 +266,6 @@ async function callProvider(
   }
 }
 
-function parseJson(text: string): unknown {
-  try {
-    return JSON.parse(text);
-  } catch {
-    return undefined;
-  }
-}
-
 function logged(
   deps: Deps,
   stage: LogEvent["stage"],
@@ -429,13 +421,12 @@ async function triageFlow(req: Request, deps: Deps, requestId: string, extra: Pa
   extra.promptVersion = PROMPT_VERSION;
   extra.totalTokens = out.totalTokens;
 
-  const parsed = triageOutputSchema.safeParse(parseJson(out.text));
-  // Question IDs are normalised by the server, never trusted from the model.
-  const questions = parsed.success ? parsed.data.questions.map((q, i) => ({ id: `q${i + 1}`, text: q.text, why: q.why })) : null;
-  if (!questions || findUnsafeOutput(questions)) {
+  const interpreted = interpretTriage(out.text);
+  if (!interpreted.ok) {
     await finish("failed");
     return fail("invalid_result", requestId);
   }
+  const questions = interpreted.value;
 
   const saved = await finish("triaged", {
     intakeHash: hashOf(body.intake),
@@ -557,12 +548,12 @@ async function diagnoseFlow(req: Request, deps: Deps, requestId: string, extra: 
   extra.promptVersion = PROMPT_VERSION;
   extra.totalTokens = out.totalTokens;
 
-  const parsed = reportSchema.safeParse(parseJson(out.text));
-  if (!parsed.success || findUnsafeOutput(parsed.data)) {
+  const interpreted = interpretDiagnosis(out.text, evidence);
+  if (!interpreted.ok) {
     await finish("failed");
     return fail("invalid_result", requestId);
   }
-  const { report } = validateEvidence(parsed.data, evidence);
+  const { report } = interpreted.value;
 
   if (!(await finish("completed"))) return fail("case_state", requestId);
   return respond({ report }, 200, requestId);
