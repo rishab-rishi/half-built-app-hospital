@@ -1,8 +1,9 @@
 import RedisMock from "ioredis-mock";
+import { Redis } from "@upstash/redis";
 import type { ModelProvider, ProviderRequest, ProviderResult } from "@/lib/ai";
 import { loadConfig } from "@/lib/config";
 import { randomToken } from "@/lib/crypto";
-import type { Store } from "@/lib/redis";
+import { upstashStore, type Store } from "@/lib/redis";
 import { cookieName, parseSessionCookie } from "@/lib/sessions";
 import { sampleCases } from "@/data/sample-cases";
 import { intakeSchema } from "@/lib/schemas";
@@ -16,6 +17,7 @@ export const intake = intakeSchema.parse(sampleCases[0].intake);
 
 export function testEnv(over: Record<string, string> = {}): Record<string, string> {
   return {
+    REDIS_NAMESPACE: "t",
     LIVE_AI_ENABLED: "true",
     APP_ORIGIN: ORIGIN,
     SESSION_HMAC_SECRET: "s".repeat(43),
@@ -29,8 +31,58 @@ export function testEnv(over: Record<string, string> = {}): Record<string, strin
     NEXT_PUBLIC_TURNSTILE_SITE_KEY: "site-key-not-real",
     TERMS_VERSION: "2026-10-09",
     PRIVACY_VERSION: "2026-10-09",
-    REDIS_NAMESPACE: "t",
     ...over,
+  };
+}
+
+/** The few raw Redis calls the tests make directly. Implemented by ioredis-mock and by Upstash. */
+export interface RedisLike {
+  hset(key: string, fields: Record<string, string>): Promise<unknown>;
+  hget(key: string, field: string): Promise<string | null>;
+  zcard(key: string): Promise<number>;
+  keys(pattern: string): Promise<string[]>;
+  ttl(key: string): Promise<number>;
+  set(key: string, value: string): Promise<unknown>;
+}
+
+export const REAL_REDIS = process.env.REAL_REDIS_TESTS === "1";
+
+function failable(inner: Store) {
+  let failing = false;
+  const guard = () => {
+    if (failing) throw new Error("redis down");
+  };
+  const store: Store = {
+    async eval(script, keys, args) {
+      guard();
+      return inner.eval(script, keys, args);
+    },
+    async get(key) {
+      guard();
+      return inner.get(key);
+    },
+    async hgetall(key) {
+      guard();
+      return inner.hgetall(key);
+    },
+  };
+  return { store, setFailing: (v: boolean) => (failing = v) };
+}
+
+/** Real Upstash, isolated by a unique namespace that is deleted afterwards. */
+export function createRealStore(namespace: string) {
+  const url = process.env.UPSTASH_REDIS_REST_URL!;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN!;
+  const redis = new Redis({ url, token, automaticDeserialization: false, retry: false });
+  const f = failable(upstashStore(url, token));
+  return {
+    store: f.store,
+    redis: redis as unknown as RedisLike,
+    setFailing: f.setFailing,
+    async reset() {
+      const found = await redis.keys(`${namespace}:*`);
+      if (found.length) await redis.del(...found);
+    },
   };
 }
 
@@ -55,7 +107,14 @@ export function createMockStore() {
       return Object.keys(v).length ? v : null;
     },
   };
-  return { store, redis, setFailing: (v: boolean) => (failing = v) };
+  return {
+    store,
+    redis: redis as unknown as RedisLike & { flushall(): Promise<unknown> },
+    setFailing: (v: boolean) => (failing = v),
+    reset: async () => {
+      await redis.flushall();
+    },
+  };
 }
 
 /** Fake Siteverify: tokens are single-use, bound to action, hostname and optional cdata. */
@@ -129,12 +188,13 @@ export function fakeProvider() {
 }
 
 export function makeHarness(envOver: Record<string, string> = {}) {
-  const mock = createMockStore();
+  const ns = REAL_REDIS ? `hh-test-${randomToken(6)}` : "t";
+  const mock = REAL_REDIS ? createRealStore(ns) : createMockStore();
   const ts = fakeTurnstile();
   const prov = fakeProvider();
   const logs: LogEvent[] = [];
   const clock = { ip: "203.0.113.7" as string | null, now: Date.UTC(2026, 9, 9, 12, 0, 0) };
-  const config = loadConfig(testEnv(envOver));
+  const config = loadConfig(testEnv({ REDIS_NAMESPACE: ns, ...envOver }));
   const deps: Deps = {
     config,
     store: mock.store,
@@ -227,6 +287,8 @@ export function makeHarness(envOver: Record<string, string> = {}) {
 
   return {
     mock,
+    ns,
+    reset: () => mock.reset(),
     ts,
     prov,
     logs,

@@ -133,3 +133,23 @@ describe("crypto helpers", () => {
     expect(estimateTokens("日本語".repeat(100))).toBeGreaterThan(estimateTokens("abc".repeat(100)));
   });
 });
+
+import { toRecord } from "@/lib/redis";
+
+describe("Upstash hash reply normalisation", () => {
+  it("turns the flat array form into a record", () => {
+    expect(toRecord(["terms", "2026-10-09", "n", "123"])).toEqual({ terms: "2026-10-09", n: "123" });
+  });
+  it("treats missing or empty replies as no key", () => {
+    expect(toRecord(null)).toBeNull();
+    expect(toRecord([])).toBeNull();
+    expect(toRecord({})).toBeNull();
+  });
+  it("accepts an object reply and stringifies values", () => {
+    expect(toRecord({ n: 123 })).toEqual({ n: "123" });
+  });
+  it("rejects malformed replies instead of guessing", () => {
+    expect(() => toRecord(["a"])).toThrow();
+    expect(() => toRecord("x")).toThrow();
+  });
+});

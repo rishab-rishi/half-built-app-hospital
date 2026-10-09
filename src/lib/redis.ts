@@ -11,6 +11,24 @@ export interface Store {
   hgetall(key: string): Promise<Record<string, string> | null>;
 }
 
+/**
+ * With automatic deserialisation off, Upstash returns HGETALL as a flat [field, value, ...] array
+ * (verified against a live database). Normalise to a record; empty means the key does not exist.
+ */
+export function toRecord(raw: unknown): Record<string, string> | null {
+  if (raw === null || raw === undefined) return null;
+  const out: Record<string, string> = Object.create(null);
+  if (Array.isArray(raw)) {
+    if (raw.length % 2 !== 0) throw new Error("malformed hash reply");
+    for (let i = 0; i < raw.length; i += 2) out[String(raw[i])] = String(raw[i + 1]);
+  } else if (typeof raw === "object") {
+    for (const [k, v] of Object.entries(raw)) out[k] = String(v);
+  } else {
+    throw new Error("malformed hash reply");
+  }
+  return Object.keys(out).length > 0 ? out : null;
+}
+
 export function upstashStore(url: string, token: string): Store {
   // Deserialisation off: numeric-looking strings must stay strings (hashes, versions).
   const redis = new Redis({ url, token, automaticDeserialization: false, retry: false });
@@ -25,8 +43,7 @@ export function upstashStore(url: string, token: string): Store {
       return v === null || v === undefined ? null : String(v);
     },
     async hgetall(key) {
-      const v = await redis.hgetall<Record<string, string>>(key);
-      return v && Object.keys(v).length > 0 ? v : null;
+      return toRecord(await redis.hgetall(key));
     },
   };
 }

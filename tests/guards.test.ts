@@ -1,11 +1,14 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { handleDiagnose, handleSession, handleTriage } from "@/server/handlers";
 import { makeHarness, ORIGIN, intake, type Harness } from "./helpers/harness";
 
 let h: Harness;
+afterEach(async () => {
+  await h.reset();
+});
 beforeEach(async () => {
   h = makeHarness();
-  await h.mock.redis.flushall();
+  await h.reset();
 });
 
 const status = (r: Response) => r.status;
@@ -48,7 +51,7 @@ describe("live mode and configuration", () => {
 
   it("honours the Redis kill-switch", async () => {
     const a = await h.admit();
-    await h.mock.redis.set("t:kill", "1");
+    await h.mock.redis.set(`${h.ns}:kill`, "1");
     const t = await h.triage(a.caseId, a.cookie);
     expect(t.res.status).toBe(503);
     expect(t.json.error).toBe("live_disabled");

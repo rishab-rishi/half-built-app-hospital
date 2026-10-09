@@ -4,9 +4,14 @@ import path from "node:path";
 export default defineConfig({
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "src"),
-      "server-only": path.resolve(__dirname, "tests/stubs/server-only.ts"),
+      "@": path.resolve(import.meta.dirname, "src"),
+      "server-only": path.resolve(import.meta.dirname, "tests/stubs/server-only.ts"),
     },
   },
-  test: { include: ["tests/**/*.test.ts"], environment: "node" },
+  test: {
+    include: ["tests/**/*.test.ts"],
+    environment: "node",
+    // Real Upstash calls are network round trips.
+    testTimeout: process.env.REAL_REDIS_TESTS === "1" ? 60_000 : 5_000,
+  },
 });

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   admitCounters,
   attemptCounters,
@@ -14,9 +14,12 @@ import { handleSession } from "@/server/handlers";
 import { makeHarness, type Harness, type Json } from "./helpers/harness";
 
 let h: Harness;
+afterEach(async () => {
+  await h.reset();
+});
 beforeEach(async () => {
   h = makeHarness();
-  await h.mock.redis.flushall();
+  await h.reset();
 });
 
 const calls = (n: number) => expect(h.prov.calls).toHaveLength(n);
@@ -132,7 +135,7 @@ describe("shared limits", () => {
   it("counter keys expire after their bucket plus grace", async () => {
     await h.admit();
     const w = windows(h.clock.now);
-    const ipKeys = (await h.mock.redis.keys("t:c:case-d:*")) as string[];
+    const ipKeys = (await h.mock.redis.keys(`${h.ns}:c:case-d:*`)) as string[];
     expect(ipKeys.length).toBeGreaterThan(0);
     const ttl = await h.mock.redis.ttl(ipKeys[0]);
     expect(ttl).toBeGreaterThan(w.toDay);
@@ -141,7 +144,10 @@ describe("shared limits", () => {
 });
 
 describe("leases are ownership-safe and expire", () => {
-  const ns = "t";
+  let ns = "";
+  beforeEach(() => {
+    ns = h.ns;
+  });
   async function seedCase(id: string, session: string, state = "triaged") {
     await h.mock.redis.hset(keys.caseRec(ns, id), { state, sessionHash: session });
   }
@@ -196,7 +202,7 @@ describe("leases are ownership-safe and expire", () => {
     h.config.limits.globalPerMonth = 0;
     const denied = await reserve("x", "s-x", "T");
     expect(denied.ok).toBe(false);
-    expect(await h.mock.redis.keys("t:c:ai-m:ip-x:*")).toEqual([]);
+    expect(await h.mock.redis.keys(`${h.ns}:c:ai-m:ip-x:*`)).toEqual([]);
     expect(await h.mock.redis.hget(keys.caseRec(ns, "x"), "state")).toBe("triaged");
   });
 
