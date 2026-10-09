@@ -387,7 +387,8 @@ async function triageFlow(req: Request, deps: Deps, requestId: string, extra: Pa
   if (findLikelySecret(textOfIntake(body.intake))) return fail("secret_detected", requestId);
   const evidence = buildEvidenceMap(body.intake);
   const messages = triageMessages(evidence);
-  if (estimateTokens(messages.system + messages.user) > MAX_INPUT_TOKENS) return fail("too_large", requestId);
+  const inputTokens = estimateTokens(messages.system + messages.user);
+  if (inputTokens > MAX_INPUT_TOKENS) return fail("too_large", requestId);
 
   if (!(await challenge(ctx, body.turnstileToken, "triage", sessionHash))) return fail("challenge_failed", requestId);
 
@@ -399,7 +400,7 @@ async function triageFlow(req: Request, deps: Deps, requestId: string, extra: Pa
       sessionHash,
       from: "admitted",
       to: "triaging",
-      counters: reserveCounters(config.namespace, "triage", ctx.ipHash, sessionHash, config.limits, deps.now()),
+      counters: reserveCounters(config.namespace, inputTokens + MAX_OUTPUT_TOKENS.triage, ctx.ipHash, sessionHash, config.limits, deps.now()),
       token,
       now: deps.now(),
     });
@@ -513,7 +514,8 @@ async function diagnoseFlow(req: Request, deps: Deps, requestId: string, extra: 
   if (findLikelySecret(textOfIntake(body.intake, body.answers))) return fail("secret_detected", requestId);
   const evidence = buildEvidenceMap(body.intake, body.answers);
   const messages = diagnoseMessages(evidence, body.questions);
-  if (estimateTokens(messages.system + messages.user) > MAX_INPUT_TOKENS) return fail("too_large", requestId);
+  const inputTokens = estimateTokens(messages.system + messages.user);
+  if (inputTokens > MAX_INPUT_TOKENS) return fail("too_large", requestId);
 
   if (!(await challenge(ctx, body.turnstileToken, "diagnose", sessionHash))) {
     return fail("challenge_failed", requestId);
@@ -527,7 +529,7 @@ async function diagnoseFlow(req: Request, deps: Deps, requestId: string, extra: 
       sessionHash,
       from: "triaged",
       to: "diagnosing",
-      counters: reserveCounters(config.namespace, "diagnose", ctx.ipHash, sessionHash, config.limits, deps.now()),
+      counters: reserveCounters(config.namespace, inputTokens + MAX_OUTPUT_TOKENS.diagnose, ctx.ipHash, sessionHash, config.limits, deps.now()),
       token,
       now: deps.now(),
     });

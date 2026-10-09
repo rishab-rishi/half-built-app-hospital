@@ -26,8 +26,6 @@ export const LIMITS = {
   leaseMs: 40_000,
   caseTtlSec: 30 * 60,
   sessionTtlSec: 24 * 60 * 60,
-  /** Max tokens reserved per call (input bound + output bound). */
-  reserveTokens: { triage: 6000 + 450, diagnose: 6000 + 1800 },
 } as const;
 
 type Windows = { minute: string; day: string; month: string; toMinute: number; toDay: number; toMonth: number };
@@ -79,6 +77,7 @@ export type GlobalLimits = {
   globalPerMinute: number;
   globalPerDay: number;
   globalPerMonth: number;
+  globalTokensPerMinute: number;
   globalTokensPerDay: number;
   globalTokensPerMonth: number;
 };
@@ -110,14 +109,14 @@ export function admitCounters(
 
 export function reserveCounters(
   ns: string,
-  stage: "triage" | "diagnose",
+  /** Reserved for this call: conservative input estimate + the output cap. */
+  tokens: number,
   ipHash: string,
   sessionHash: string,
   g: GlobalLimits,
   now: number,
 ): Counter[] {
   const w = windows(now);
-  const tokens = LIMITS.reserveTokens[stage];
   return [
     counter(ns, "ip", "ai-m", ipHash, "minute", w, LIMITS.modelCallsPerMinute),
     counter(ns, "ip", "ai-d", ipHash, "day", w, LIMITS.modelCallsPerDay),
@@ -126,6 +125,7 @@ export function reserveCounters(
     counter(ns, "global", "ai-m", "all", "minute", w, g.globalPerMinute),
     counter(ns, "global", "ai-d", "all", "day", w, g.globalPerDay),
     counter(ns, "global", "ai-mo", "all", "month", w, g.globalPerMonth),
+    counter(ns, "global", "tok-m", "all", "minute", w, g.globalTokensPerMinute, tokens),
     counter(ns, "global", "tok-d", "all", "day", w, g.globalTokensPerDay, tokens),
     counter(ns, "global", "tok-mo", "all", "month", w, g.globalTokensPerMonth, tokens),
   ];

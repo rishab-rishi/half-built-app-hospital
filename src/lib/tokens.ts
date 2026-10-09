@@ -1,4 +1,5 @@
-export const MAX_INPUT_TOKENS = 6000;
+// Sized so a worst-case call (input + output cap) fits inside the provider's per-minute token limit.
+export const MAX_INPUT_TOKENS = 5000;
 export const MAX_OUTPUT_TOKENS = { triage: 450, diagnose: 1800 } as const;
 
 /**

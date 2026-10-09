@@ -19,6 +19,7 @@ export type AppConfig = {
     globalPerMinute: number;
     globalPerDay: number;
     globalPerMonth: number;
+    globalTokensPerMinute: number;
     globalTokensPerDay: number;
     globalTokensPerMonth: number;
   };
@@ -110,8 +111,10 @@ export function loadConfig(env: Env): AppConfig {
       globalPerMinute: 10,
       globalPerDay: positiveInt(env.GLOBAL_AI_CALLS_PER_DAY, 80),
       globalPerMonth: positiveInt(env.GLOBAL_AI_CALLS_PER_MONTH, 800),
-      globalTokensPerDay: positiveInt(env.GLOBAL_AI_TOKENS_PER_DAY, 600_000),
-      globalTokensPerMonth: positiveInt(env.GLOBAL_AI_TOKENS_PER_MONTH, 6_000_000),
+      // Defaults sit below the provider's published limits (8K/minute, 200K/day for gpt-oss-20b).
+      globalTokensPerMinute: positiveInt(env.GLOBAL_AI_TOKENS_PER_MINUTE, 7_000),
+      globalTokensPerDay: positiveInt(env.GLOBAL_AI_TOKENS_PER_DAY, 150_000),
+      globalTokensPerMonth: positiveInt(env.GLOBAL_AI_TOKENS_PER_MONTH, 3_000_000),
     },
   };
 }

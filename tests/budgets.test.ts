@@ -76,7 +76,7 @@ describe("parallel requests never overspend", () => {
   });
 
   it("global token budget blocks inference even when call counts allow it", async () => {
-    h.config.limits.globalTokensPerDay = LIMITS.reserveTokens.triage - 1;
+    h.config.limits.globalTokensPerDay = 100; // far below any real reservation
     const a = await h.admit();
     const t = await h.triage(a.caseId, a.cookie);
     expect(t.json.error).toBe("capacity_reached");
@@ -158,7 +158,7 @@ describe("leases are ownership-safe and expire", () => {
       sessionHash: session,
       from: "triaged",
       to: "diagnosing",
-      counters: reserveCounters(ns, "diagnose", "ip-" + id, session, h.config.limits, now),
+      counters: reserveCounters(ns, 3000, "ip-" + id, session, h.config.limits, now),
       token,
       now,
     });
@@ -188,7 +188,21 @@ describe("leases are ownership-safe and expire", () => {
     expect(await h.mock.redis.zcard(keys.globalLease(ns))).toBe(0);
   });
 
+  it("per-minute token budget stops a call that would exceed the provider's minute limit", async () => {
+    await seedCase("tm1", "s-tm1");
+    await seedCase("tm2", "s-tm2");
+    expect((await reserve("tm1", "s-tm1", "1")).ok).toBe(true); // 3000 reserved
+    expect((await reserve("tm2", "s-tm2", "2")).ok).toBe(true); // 6000 of 7000
+    await seedCase("tm3", "s-tm3");
+    const denied = await reserve("tm3", "s-tm3", "3"); // would be 9000
+    expect(denied.ok).toBe(false);
+    expect(denied.ok === false && denied.reason).toBe("counter");
+    // The next minute has a fresh bucket.
+    expect((await reserve("tm3", "s-tm3", "3", 1_000_000 + 61_000)).ok).toBe(true);
+  });
+
   it("global concurrency is capped and a crashed lease expires", async () => {
+    h.config.limits.globalTokensPerMinute = 1_000_000; // this test is about leases, not tokens
     for (const [id, s] of [["a", "s-a"], ["b", "s-b"], ["c", "s-c"]]) await seedCase(id, s);
     expect((await reserve("a", "s-a", "1")).ok).toBe(true);
     expect((await reserve("b", "s-b", "2")).ok).toBe(true);
@@ -225,8 +239,8 @@ describe("leases are ownership-safe and expire", () => {
     expect(attemptCounters(ns, "ip", 0)).toHaveLength(2);
     expect(admitCounters(ns, "ip", "s", true, 0)).toHaveLength(3);
     expect(admitCounters(ns, "ip", "s", false, 0)).toHaveLength(2);
-    expect(reserveCounters(ns, "triage", "ip", "s", h.config.limits, 0).map((c) => c.scope)).toEqual([
-      "ip", "ip", "session", "session", "global", "global", "global", "global", "global",
+    expect(reserveCounters(ns, 1500, "ip", "s", h.config.limits, 0).map((c) => c.scope)).toEqual([
+      "ip", "ip", "session", "session", "global", "global", "global", "global", "global", "global",
     ]);
   });
 });

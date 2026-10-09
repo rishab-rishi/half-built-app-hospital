@@ -29,6 +29,8 @@ export function groqProvider(apiKey: string, model: string): ModelProvider {
           max_completion_tokens: req.maxOutputTokens,
           temperature: 0,
           response_format: { type: "json_object" },
+          // Reasoning tokens count against the output cap; measured 245 of 1711 at default effort.
+          ...(model.startsWith("openai/gpt-oss") ? { reasoning_effort: "low" as const } : {}),
         },
         { signal: req.signal, maxRetries: 0 },
       );
