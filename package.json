@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "next typegen && tsc --noEmit",
     "e2e": "playwright test",
     "test:redis": "node scripts/test-real-redis.mjs",
     "eval": "node --env-file=.env.local node_modules/vitest/vitest.mjs run --config vitest.eval.config.mts",
