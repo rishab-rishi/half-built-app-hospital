@@ -30,6 +30,10 @@ export function normaliseIp(raw: string): string | null {
  * skipping IP limits. Re-verify on the deployed environment before enabling live mode.
  */
 export function trustedClientIp(headers: Headers, env: Record<string, string | undefined>): string | null {
+  // Local `next dev` only: one fixed loopback identity so the flow can be exercised by hand.
+  // NODE_ENV is "production" for every built/started app, so this branch cannot run when deployed,
+  // and it is wired here (server side), never driven by a request header or a flag.
+  if (env.NODE_ENV === "development" && env.VERCEL !== "1") return "127.0.0.1";
   if (env.VERCEL !== "1") return null;
   const value = headers.get("x-real-ip");
   if (!value || value.includes(",")) return null;

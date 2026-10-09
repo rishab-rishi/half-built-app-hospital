@@ -350,7 +350,8 @@ async function sessionFlow(req: Request, deps: Deps, requestId: string): Promise
     if (!result.ok) {
       return result.reason === "counter" ? denyCounter(result.counter, requestId) : fail("forbidden", requestId);
     }
-    return respond({ caseId }, 200, requestId, newCookie ? { "Set-Cookie": newCookie } : {});
+    // `cdata` binds later Turnstile widgets to this session. It is a one-way hash, useless without the cookie.
+    return respond({ caseId, cdata: sessionHash }, 200, requestId, newCookie ? { "Set-Cookie": newCookie } : {});
   } catch {
     return fail("provider_unavailable", requestId);
   }

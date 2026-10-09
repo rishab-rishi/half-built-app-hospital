@@ -62,6 +62,10 @@ describe("client IP", () => {
   it("ignores spoofable headers and off-platform requests", () => {
     const spoof = new Headers({ "x-forwarded-for": "1.2.3.4", "x-real-ip": "5.6.7.8" });
     expect(trustedClientIp(spoof, {})).toBeNull();
+    expect(trustedClientIp(spoof, { NODE_ENV: "production" })).toBeNull(); // no dev identity in built apps
+    expect(trustedClientIp(spoof, { NODE_ENV: "test" })).toBeNull();
+    expect(trustedClientIp(spoof, { NODE_ENV: "development" })).toBe("127.0.0.1"); // never reads spoofable headers
+    expect(trustedClientIp(spoof, { NODE_ENV: "development", VERCEL: "1" })).toBe("5.6.7.8");
     expect(trustedClientIp(spoof, { VERCEL: "1" })).toBe("5.6.7.8");
     expect(trustedClientIp(new Headers({ "x-real-ip": "1.1.1.1, 2.2.2.2" }), { VERCEL: "1" })).toBeNull();
     expect(trustedClientIp(new Headers({ "x-real-ip": "not-an-ip" }), { VERCEL: "1" })).toBeNull();

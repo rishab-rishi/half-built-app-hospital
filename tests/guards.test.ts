@@ -126,6 +126,13 @@ describe("session, consent and challenge", () => {
     expect(h.ts.state.calls).toBe(0);
   });
 
+  it("returns the opaque session binding for later challenges, never the cookie", async () => {
+    const a = await h.admit();
+    const json = (await a.res.clone().json()) as { caseId: string; cdata: string };
+    expect(json.cdata).toBe(h.sessionHashOf(a.cookie));
+    expect(a.cookie).not.toContain(json.cdata);
+  });
+
   it("rejects invalid, replayed, wrong-hostname and wrong-action tokens", async () => {
     const post = (token: string) =>
       handleSession(h.request("/api/session", { turnstileToken: token, terms: h.terms }), h.deps);
