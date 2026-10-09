@@ -8,7 +8,7 @@ test("sample journey works with live AI disabled and makes no API calls", async 
   });
 
   await page.goto("/");
-  await expect(page.getByText("Evaluation pending")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "What this demo can prove" })).toBeVisible();
   await page.getByRole("link", { name: /Open chart for The Booking App/ }).click();
 
   await expect(page.getByRole("heading", { level: 1 })).toContainText("Booking App");
@@ -98,4 +98,14 @@ test("pages carry the baseline security headers", async ({ request }) => {
   expect(h["x-frame-options"]).toBe("DENY");
   expect(h["content-security-policy"]).toContain("frame-ancestors 'none'");
   expect(h["content-security-policy"]).toContain("object-src 'none'");
+});
+
+test("the quality card shows the measured, versioned evaluation including misses", async ({ page }) => {
+  await page.goto("/");
+  const card = page.getByRole("region", { name: "What this demo can prove" });
+  await expect(card).toContainText("Measured 2026-10-09 on 18 fictional cases");
+  await expect(card).toContainText("not met:");
+  await expect(card).toContainText("tuned using these same 18 cases");
+  await expect(card).not.toContainText("Evaluation pending");
+  await expect(card).not.toContainText("Out of date");
 });

@@ -1,7 +1,7 @@
 import type { EvidenceMap } from "./evidence";
 import type { Question } from "./schemas";
 
-export const PROMPT_VERSION = "2026-10-09.1";
+export const PROMPT_VERSION = "2026-10-09.2";
 
 const COMMON = `You produce provisional assessments of unfinished software from supplied text.
 You have not inspected, scanned, or executed the app.
@@ -18,17 +18,30 @@ export const TRIAGE_SYSTEM = `${COMMON}
 Task: triage. Identify missing observations and ask no more than three clarifying questions.
 Questions must request observations or redacted excerpts, never passwords, tokens, customer records, or repository access.
 Do not decide a root cause before evidence exists. If nothing is needed, return an empty list.
+Every question must have both "text" and "why".
 JSON shape: {"questions":[{"id":"q1","text":"<=300 chars","why":"<=250 chars"}]}`;
 
 export const DIAGNOSE_SYSTEM = `${COMMON}
 
 Task: diagnosis. Separate reported facts, hypotheses, and unknowns. Every observation, hypothesis and task
-cites evidenceIds (max 3) taken only from the supplied evidence map keys. Use P0 only for an urgent problem the
-user reported, and say so in the rationale. Confidence is a qualitative judgement of the supplied evidence.
-Recommend reversible staging checks and backups where relevant, and manual engineering review for
-authentication, payments, or data-loss concerns.
+cites at most three evidenceIds, taken only from the supplied evidence map keys.
 Cite evidence only with exact IDs from validEvidenceIds, such as "symptoms", "error:L2" or "answer:q1".
 Answers to questions are cited as "answer:q1", "answer:q2"; a bare "q1" is not a valid ID.
+
+Priorities: P0 is only for a problem the user explicitly reported as urgent or already hurting live users, for example
+one person seeing another's data or money moving incorrectly. A P0 rationale must begin with "Reported urgent:" and
+name the reported impact. Everything else is P1 to P3. When unsure, choose the lower priority.
+
+Confidence: use "high" only when at least two separate pieces of evidence agree. Use "low" for sparse or conflicting
+reports. If the report lacks steps, errors, or expected behaviour, set assessmentStatus to "insufficient_information"
+and list what is missing.
+
+Acceptance criteria: each entry is one full sentence describing a concrete check to run in staging and the result that
+confirms the fix (an action plus the expected observation). Avoid vague wording such as "works correctly".
+
+If the case involves authentication, authorisation, payments, or one user's data being visible to another, include a
+task whose title starts with "Have an engineer verify" and say the finding is unverified.
+
 The summary is at most three short sentences and under 450 characters.
 JSON shape: {"summary":"<=600","assessmentStatus":"provisional|insufficient_information",
 "observations":[{"text":"<=300","evidenceIds":[]}] (max 5),
@@ -45,7 +58,15 @@ export function triageMessages(evidence: EvidenceMap): ChatMessages {
   return { system: TRIAGE_SYSTEM, user: DATA_PREFIX + JSON.stringify({ evidence }) };
 }
 
+/**
+ * Answers are already evidence ("answer:q1"). Each is paired with the question it answers, and question
+ * IDs are never shown bare, so the model cannot mistake them for citable evidence.
+ */
 export function diagnoseMessages(evidence: EvidenceMap, questions: Question[]): ChatMessages {
+  const answered = questions
+    .filter((q) => Object.hasOwn(evidence, `answer:${q.id}`))
+    .map((q) => ({ evidenceId: `answer:${q.id}`, question: q.text }));
+  const unanswered = questions.filter((q) => !Object.hasOwn(evidence, `answer:${q.id}`)).map((q) => q.text);
   return {
     system: DIAGNOSE_SYSTEM,
     user:
@@ -53,7 +74,8 @@ export function diagnoseMessages(evidence: EvidenceMap, questions: Question[]): 
       JSON.stringify({
         validEvidenceIds: Object.keys(evidence),
         evidence,
-        questionsAsked: questions.map((q) => ({ id: q.id, text: q.text })),
+        answeredQuestions: answered,
+        unansweredQuestions: unanswered,
       }),
   };
 }
