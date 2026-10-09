@@ -54,7 +54,12 @@ export function RecoveryBoard({
                 return (
                   <li key={t.id} className="rounded-lg border bg-card p-3 text-card-foreground">
                     <div className="flex items-start gap-2">
-                      <Badge variant={t.priority === "P0" ? "destructive" : "secondary"}>{t.priority}</Badge>
+                      <Badge
+                        variant={t.priority === "P0" ? "default" : "secondary"}
+                        className={t.priority === "P0" ? "border-transparent bg-red-700 text-white dark:bg-red-600" : undefined}
+                      >
+                        {t.priority}
+                      </Badge>
                       <h4 className="text-sm font-medium break-words">{t.title}</h4>
                     </div>
                     <p className="mt-2 text-sm break-words text-muted-foreground">{t.rationale}</p>

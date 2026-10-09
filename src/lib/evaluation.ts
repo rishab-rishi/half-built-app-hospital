@@ -1,3 +1,4 @@
+import "./zod-config";
 import { z } from "zod";
 
 /** Shape of data/evaluation-summary.json. Written only by an intentional evaluation run. */

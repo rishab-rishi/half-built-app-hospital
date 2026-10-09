@@ -83,7 +83,7 @@ export function TurnstileWidget({
 
   return (
     <div>
-      <div ref={box} aria-label="Human verification" />
+      <div ref={box} role="group" aria-label="Human verification" />
       {status === "loading" && <p className="text-sm text-muted-foreground">Loading the human check...</p>}
       {status === "failed" && (
         <p role="alert" className="text-sm text-destructive">

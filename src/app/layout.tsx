@@ -3,6 +3,9 @@ import Link from "next/link";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
+// Pages render per request so the Content-Security-Policy nonce can be applied to every script.
+export const dynamic = "force-dynamic";
+
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -50,7 +53,13 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           {children}
         </main>
         <footer className="border-t px-4 py-4 text-center text-xs text-muted-foreground">
-          Provisional, AI-assisted suggestions from supplied text only. Not a security audit or certification.
+          <p>Provisional, AI-assisted suggestions from supplied text only. Not a security audit or certification.</p>
+          <nav aria-label="Policies" className="mt-2 flex flex-wrap justify-center gap-4">
+            <Link href="/terms">Terms</Link>
+            <Link href="/privacy">Privacy</Link>
+            <Link href="/limitations">Limitations</Link>
+            <Link href="/security">Security</Link>
+          </nav>
         </footer>
       </body>
     </html>
