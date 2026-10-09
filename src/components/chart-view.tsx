@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EvidenceDrawer, type EvidenceRequest } from "@/components/evidence-drawer";
@@ -10,7 +10,7 @@ import { SampleModeBanner } from "@/components/sample-mode-banner";
 import type { EvidenceMap } from "@/lib/evidence";
 import { downloadMarkdown, exportMarkdown } from "@/lib/export-markdown";
 import type { Intake, Report } from "@/lib/schemas";
-import { initTaskState, progress } from "@/lib/task-state";
+import { initTaskState, progress, type CaseTaskState } from "@/lib/task-state";
 
 function LiveBanner() {
   return (
@@ -40,11 +40,32 @@ export type ChartViewProps = {
   provenance: "sample" | "live";
   /** Live cases: clears the case from the page. */
   onClear?: () => void;
+  /** Restoring a case the visitor chose to remember in this tab. */
+  initialTaskState?: CaseTaskState;
+  onTaskStateChange?: (state: CaseTaskState) => void;
 };
 
-export function ChartView({ caseId, title, tagline, intake, report, evidence, provenance, onClear }: ChartViewProps) {
+export function ChartView({
+  caseId,
+  title,
+  tagline,
+  intake,
+  report,
+  evidence,
+  provenance,
+  onClear,
+  initialTaskState,
+  onTaskStateChange,
+}: ChartViewProps) {
   const sample = provenance === "sample";
-  const [taskState, setTaskState] = useState(() => initTaskState(caseId, report));
+  const [taskState, setTaskState] = useState(() => initialTaskState ?? initTaskState(caseId, report));
+  const notify = useRef(onTaskStateChange);
+  useEffect(() => {
+    notify.current = onTaskStateChange;
+  });
+  useEffect(() => {
+    notify.current?.(taskState);
+  }, [taskState]);
   const [request, setRequest] = useState<EvidenceRequest>(null);
   const [includeFull, setIncludeFull] = useState(false);
   const [exportMessage, setExportMessage] = useState("");

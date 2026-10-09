@@ -96,6 +96,10 @@ describe("credential detection", () => {
   it("leaves ordinary bug reports alone and never returns the secret itself", () => {
     expect(findLikelySecret("Users see a password reset page after login fails with 500")).toBeNull();
     expect(findLikelySecret("TypeError: cannot read properties of undefined (reading 'id')")).toBeNull();
+    // Ordinary configuration code is not a credential and must not block a visitor.
+    expect(findLikelySecret("password: process.env.DB_PASSWORD")).toBeNull();
+    expect(findLikelySecret("secret: config.secrets.turnstile,")).toBeNull();
+    expect(findLikelySecret("api_key = get_settings().api_key_value")).toBeNull();
     expect(findLikelySecret("AKIAABCDEFGHIJKLMNOP")).toBe("AWS access key");
   });
 });

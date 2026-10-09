@@ -8,7 +8,9 @@ import { TurnstileWidget } from "@/components/turnstile-widget";
 import { describeFailure, postJson, type ApiFailure, type FailureView } from "@/lib/api-client";
 import { buildEvidenceMap } from "@/lib/evidence";
 import { EMPTY_FORM, parseForm, type FormField, type FormValues } from "@/lib/intake-form";
+import { clearSavedCase, loadSavedCase, saveCase, type SavedCase } from "@/lib/saved-case";
 import { LIMITS, type Intake, type Question, type Report } from "@/lib/schemas";
+import type { CaseTaskState } from "@/lib/task-state";
 
 const SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "";
 
@@ -37,6 +39,12 @@ export function AdmissionFlow() {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [report, setReport] = useState<Report | null>(null);
 
+  // Opt-in, off by default: keep the finished case in this tab's sessionStorage (never localStorage).
+  const [remember, setRemember] = useState(false);
+  const [saved, setSaved] = useState<SavedCase | null>(null);
+  const [restoredTasks, setRestoredTasks] = useState<CaseTaskState | undefined>(undefined);
+  const latestTasks = useRef<CaseTaskState | null>(null);
+
   const [token, setToken] = useState<string | null>(null);
   const [challengeKey, setChallengeKey] = useState(0);
   const alertRef = useRef<HTMLDivElement>(null);
@@ -63,6 +71,13 @@ export function AdmissionFlow() {
   useEffect(() => {
     if (failure) alertRef.current?.focus();
   }, [failure]);
+
+  useEffect(() => {
+    // Reading browser storage only happens on the client, after mount.
+    const found = loadSavedCase();
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (found) setSaved(found);
+  }, []);
 
   const hasCase = phase !== "form" || Object.values(form).some((v) => v.trim() !== "");
   const evidence = useMemo(
@@ -92,6 +107,11 @@ export function AdmissionFlow() {
   };
 
   const resetAll = () => {
+    clearSavedCase();
+    setRemember(false);
+    setSaved(null);
+    setRestoredTasks(undefined);
+    latestTasks.current = null;
     setPhase("form");
     setForm(EMPTY_FORM);
     setFieldErrors({});
@@ -172,22 +192,81 @@ export function AdmissionFlow() {
     freshChallenge();
   };
 
+  const snapshot = (tasks: CaseTaskState | null): SavedCase | null =>
+    intake && report && tasks
+      ? {
+          v: 1,
+          savedAt: new Date().toISOString(),
+          caseId,
+          intake,
+          questions,
+          answers: Object.fromEntries(Object.entries(answers).filter(([, v]) => v.trim() !== "")),
+          report,
+          taskState: tasks,
+        }
+      : null;
+
+  const onTasksChanged = (tasks: CaseTaskState) => {
+    latestTasks.current = tasks;
+    if (!remember) return;
+    const snap = snapshot(tasks);
+    if (snap) saveCase(snap);
+  };
+
+  const toggleRemember = (on: boolean) => {
+    setRemember(on);
+    if (!on) return clearSavedCase();
+    const snap = snapshot(latestTasks.current);
+    if (snap) saveCase(snap);
+  };
+
+  const restore = () => {
+    if (!saved) return;
+    setIntake(saved.intake);
+    setQuestions(saved.questions);
+    setAnswers(saved.answers);
+    setReport(saved.report);
+    setCaseId(saved.caseId);
+    setRestoredTasks(saved.taskState);
+    latestTasks.current = saved.taskState;
+    setRemember(true);
+    setSaved(null);
+    setPhase("report");
+  };
+
   const set = (k: keyof FormValues) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
     setForm((f) => ({ ...f, [k]: e.target.value }));
 
   /* ---------- rendering ---------- */
   if (phase === "report" && report && intake) {
     return (
-      <ChartView
-        key={caseId}
-        caseId={caseId}
-        title={intake.title}
-        intake={intake}
-        report={report}
-        evidence={evidence}
-        provenance="live"
-        onClear={resetAll}
-      />
+      <div className="space-y-6">
+        <ChartView
+          key={caseId}
+          caseId={caseId}
+          title={intake.title}
+          intake={intake}
+          report={report}
+          evidence={evidence}
+          provenance="live"
+          onClear={resetAll}
+          initialTaskState={restoredTasks}
+          onTaskStateChange={onTasksChanged}
+        />
+        <section aria-labelledby="remember-h" className="rounded-xl border p-4">
+          <h2 id="remember-h" className="text-lg font-semibold">
+            Remember in this tab
+          </h2>
+          <label className="mt-2 flex items-start gap-2 text-sm">
+            <input type="checkbox" className="mt-1 size-4" checked={remember} onChange={(e) => toggleRemember(e.target.checked)} />
+            <span>
+              Keep this case, including your checklist progress, in this browser tab&apos;s session storage so a refresh
+              does not lose it. It stays on this device only. It may survive if the browser restores the session, and
+              anyone using this browser profile could see it. Off by default; <strong>Clear case</strong> removes it.
+            </span>
+          </label>
+        </section>
+      </div>
     );
   }
 
@@ -311,6 +390,30 @@ export function AdmissionFlow() {
       <p id="privacy-notice" role="note" className="rounded-lg border p-4 text-sm">
         {NOTICE}
       </p>
+      {saved && (
+        <div role="region" aria-label="Saved case" className="rounded-lg border p-4 text-sm">
+          <p>
+            You chose to remember <strong className="break-words">{saved.intake.title}</strong> in this tab (saved{" "}
+            {new Date(saved.savedAt).toLocaleString()}). It is shown as saved; it is not re-checked.
+          </p>
+          <div className="mt-2 flex gap-3">
+            <Button type="button" size="sm" onClick={restore}>
+              Restore saved case
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                clearSavedCase();
+                setSaved(null);
+              }}
+            >
+              Delete saved case
+            </Button>
+          </div>
+        </div>
+      )}
       {alert}
       {fieldErrors.total && (
         <p role="alert" className="text-sm text-destructive">

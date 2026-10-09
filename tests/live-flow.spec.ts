@@ -196,3 +196,91 @@ test("the policy pages the consent checkbox links to exist", async ({ page }) =>
     await expect(page.getByRole("heading", { level: 1, name: heading })).toBeVisible();
   }
 });
+
+/* ---------- Remember in this tab ---------- */
+
+async function completeFlow(page: Page) {
+  await page.goto("/admission");
+  await fillForm(page);
+  await page.getByLabel(/I agree to the/).check();
+  await admit(page).click();
+  await page.getByRole("button", { name: "Get clarifying questions" }).click();
+  await page.getByRole("button", { name: "Create treatment plan" }).click();
+  await expect(page.getByText("Provisional AI assessment of the details you supplied")).toBeVisible();
+}
+const savedKey = (page: Page) => page.evaluate(() => sessionStorage.getItem("hh:saved-case:v1"));
+
+test("nothing is stored unless the visitor opts in", async ({ page }) => {
+  await mockLive(page);
+  await completeFlow(page);
+  expect(await savedKey(page)).toBeNull();
+  expect(await page.evaluate(() => localStorage.length)).toBe(0);
+  await page.reload();
+  await expect(page.getByRole("region", { name: "Saved case" })).toHaveCount(0);
+});
+
+test("opting in keeps the case and checklist progress across a reload; Clear case removes it", async ({ page }) => {
+  await mockLive(page);
+  await completeFlow(page);
+  await page.getByLabel(/Keep this case/).check();
+  const stored = JSON.parse((await savedKey(page))!);
+  expect(Object.keys(stored)).not.toContain("ticket");
+  expect(JSON.stringify(stored)).not.toContain("tok-");
+  expect(JSON.stringify(stored)).not.toContain("ticket-value");
+
+  // Progress made after opting in is saved too.
+  const card = page.locator("li", { hasText: "Reproduce the race condition" }).first();
+  await card.getByRole("button", { name: "In progress" }).click();
+
+  await page.reload();
+  const banner = page.getByRole("region", { name: "Saved case" });
+  await expect(banner).toContainText(sample.intake.title);
+  await expect(banner).toContainText("not re-checked");
+  await page.getByRole("button", { name: "Restore saved case" }).click();
+  await expect(page.getByText("Provisional AI assessment of the details you supplied")).toBeVisible();
+  await expect(page.getByLabel(/Keep this case/)).toBeChecked();
+  await expect(page.getByRole("region", { name: "In progress" })).toContainText("Reproduce the race");
+
+  await page.getByRole("button", { name: "Clear case" }).click();
+  expect(await savedKey(page)).toBeNull();
+  await page.reload();
+  await expect(page.getByRole("region", { name: "Saved case" })).toHaveCount(0);
+});
+
+test("turning it off, or deleting the saved case, removes it", async ({ page }) => {
+  await mockLive(page);
+  await completeFlow(page);
+  await page.getByLabel(/Keep this case/).check();
+  expect(await savedKey(page)).not.toBeNull();
+  await page.getByLabel(/Keep this case/).uncheck();
+  expect(await savedKey(page)).toBeNull();
+
+  await page.getByLabel(/Keep this case/).check();
+  await page.reload();
+  await page.getByRole("button", { name: "Delete saved case" }).click();
+  expect(await savedKey(page)).toBeNull();
+  await expect(page.getByRole("region", { name: "Saved case" })).toHaveCount(0);
+});
+
+test("tampered or malformed storage is ignored and deleted", async ({ page }) => {
+  await mockLive(page);
+  await page.goto("/admission");
+  await page.evaluate(() => sessionStorage.setItem("hh:saved-case:v1", JSON.stringify({ v: 1, intake: { title: "<img src=x onerror=alert(1)>" } })));
+  await page.reload();
+  await expect(page.getByRole("region", { name: "Saved case" })).toHaveCount(0);
+  expect(await savedKey(page)).toBeNull();
+});
+
+test("the page still works when session storage is blocked", async ({ page }) => {
+  await mockLive(page);
+  await page.addInitScript(() => {
+    Object.defineProperty(window, "sessionStorage", {
+      get() {
+        throw new DOMException("blocked", "SecurityError");
+      },
+    });
+  });
+  await completeFlow(page);
+  await page.getByLabel(/Keep this case/).check(); // must not crash
+  await expect(page.getByText("Provisional AI assessment of the details you supplied")).toBeVisible();
+});

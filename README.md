@@ -62,6 +62,9 @@ if Turnstile test keys are used on an https origin.
 | `npm test` | Unit tests with a mock Redis that runs the real Lua scripts |
 | `npm run test:redis` | Gate and budget suites against a real Upstash database (unique key prefix, cleaned up) |
 | `npm run e2e` | Playwright against a production build (`npm run build` first); live endpoints are mocked |
+| `npm run scan:bundle` | After `npm run build`: fails if browser-visible output contains a server secret |
+| `npm run verify:deploy -- <url>` | Checks a deployed site against the launch gates (see `DEPLOY.md`) |
+| `npm run notices` | Regenerates `THIRD_PARTY_NOTICES.md` |
 | `npm run eval` | Intentional, quota-spending evaluation on 18 fictional cases; see `eval/` |
 | `npm run typecheck` / `npm run lint` | Static checks |
 
@@ -75,6 +78,10 @@ with, or "Evaluation pending". Fake-provider tests are never counted as model qu
 - The assessment is only as good as the text you give it, and the model can be wrong.
 - Shared networks can hit per-IP limits; samples remain available.
 - A single-run evaluation shows what happened, not how consistent the model is.
+
+## Deploying
+
+See [`DEPLOY.md`](DEPLOY.md) for the staged plan, the environment variables, the kill-switch, and what only you can verify.
 
 ## License
 

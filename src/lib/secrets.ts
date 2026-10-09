@@ -11,7 +11,9 @@ const PATTERNS: { label: string; re: RegExp }[] = [
   { label: "database URL with password", re: /\b[a-z][a-z0-9+.-]*:\/\/[^\s:/@]+:[^\s@/]{3,}@/i },
   {
     label: "assigned credential",
-    re: /\b(?:password|passwd|secret|api[_-]?key|access[_-]?token|auth[_-]?token)\s*[:=]\s*["']?[A-Za-z0-9/+_.-]{12,}/i,
+    // The value must contain a digit: real credentials almost always do, while code such as
+    // `password: process.env.DB_PASSWORD` or `secret: config.secrets.x` does not and must not block a visitor.
+    re: /\b(?:password|passwd|secret|api[_-]?key|access[_-]?token|auth[_-]?token)\s*[:=]\s*["']?(?=[A-Za-z0-9/+_.-]*\d)[A-Za-z0-9/+_.-]{12,}/i,
   },
 ];
 

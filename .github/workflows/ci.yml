@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      # Unit tests use a mock Redis and a fake provider. No secrets and no live services are used in CI.
+      - run: npm test
+      - run: npm run build
+      - run: npm run scan:bundle
+      - run: npx playwright install --with-deps chromium
+      - run: npm run e2e
+      # Production dependencies only; known dev-tool advisories are tracked separately.
+      - run: npm audit --omit=dev --audit-level=high
