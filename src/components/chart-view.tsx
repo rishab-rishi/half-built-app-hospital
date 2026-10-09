@@ -208,7 +208,7 @@ export function ChartView({
               : ""}
         </p>
         <div className="mt-3">
-          <RecoveryBoard report={report} state={taskState} onChange={setTaskState} onShowEvidence={show} />
+          <RecoveryBoard sample={sample} report={report} state={taskState} onChange={setTaskState} onShowEvidence={show} />
         </div>
       </section>
 

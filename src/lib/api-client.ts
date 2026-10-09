@@ -88,11 +88,19 @@ export function describeFailure(f: ApiFailure): FailureView {
         canRetry: true,
       };
     case "capacity_reached":
-      return {
-        message: "The hospital is busy: today's live assessments are used up. Come back later, or explore a sample patient now.",
-        offerSample: true,
-        canRetry: false,
-      };
+      // A short wait means the site-wide per-minute cap; otherwise the daily or monthly allowance is spent.
+      return f.retryAfterSec
+        ? {
+            message: `The hospital is busy right now. Please wait ${waitText(f.retryAfterSec)} before trying again, or explore a sample patient.`,
+            offerSample: true,
+            canRetry: true,
+          }
+        : {
+            message:
+              "The hospital is busy: the live assessments available today are used up. Daily limits reset at 00:00 UTC (monthly limits on the 1st). Come back later, or explore a sample patient now.",
+            offerSample: true,
+            canRetry: false,
+          };
     case "live_disabled":
       return {
         message: "Live assessments are switched off right now. You can still explore a sample patient.",

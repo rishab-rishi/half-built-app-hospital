@@ -47,6 +47,16 @@ describe("describeFailure", () => {
     expect(describeFailure({ ok: false, category: "live_disabled" }).canRetry).toBe(false);
   });
 
+  it("tells apart a site-wide per-minute cap from a spent daily allowance, and states the UTC reset", () => {
+    const short = describeFailure({ ok: false, category: "capacity_reached", retryAfterSec: 40 });
+    expect(short.message).toContain("40 seconds");
+    expect(short.message).not.toMatch(/used up/);
+    expect(short.canRetry).toBe(true);
+    const daily = describeFailure({ ok: false, category: "capacity_reached" });
+    expect(daily.message).toContain("00:00 UTC");
+    expect(daily.canRetry).toBe(false);
+  });
+
   it("never offers a retry once a stage is consumed", () => {
     expect(describeFailure({ ok: false, category: "invalid_result" }).canRetry).toBe(false);
     expect(describeFailure({ ok: false, category: "case_state" }).canRetry).toBe(false);

@@ -42,6 +42,7 @@ export type LogEvent = {
   outcome: string;
   latencyMs: number;
   promptVersion?: string;
+  model?: string;
   totalTokens?: number;
 };
 
@@ -110,7 +111,9 @@ function fail(category: Category, requestId: string, retryAfterSec?: number): Re
 }
 
 function denyCounter(c: Counter, requestId: string): Response {
-  return c.scope === "global" ? fail("capacity_reached", requestId) : fail("rate_limited", requestId, c.retryAfterSec);
+  if (c.scope !== "global") return fail("rate_limited", requestId, c.retryAfterSec);
+  // A global per-minute cap clears within a minute, so say when; day and month caps point to the samples.
+  return fail("capacity_reached", requestId, c.retryAfterSec <= 60 ? c.retryAfterSec : undefined);
 }
 
 /* ---------- Shared pipeline ---------- */
@@ -420,6 +423,7 @@ async function triageFlow(req: Request, deps: Deps, requestId: string, extra: Pa
     return fail("provider_unavailable", requestId);
   }
   extra.promptVersion = PROMPT_VERSION;
+  extra.model = config.groq.model;
   extra.totalTokens = out.totalTokens;
 
   const interpreted = interpretTriage(out.text);
@@ -547,6 +551,7 @@ async function diagnoseFlow(req: Request, deps: Deps, requestId: string, extra: 
     return fail("provider_unavailable", requestId);
   }
   extra.promptVersion = PROMPT_VERSION;
+  extra.model = config.groq.model;
   extra.totalTokens = out.totalTokens;
 
   const interpreted = interpretDiagnosis(out.text, evidence);

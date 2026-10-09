@@ -25,7 +25,9 @@ export function RecoveryBoard({
   state,
   onChange,
   onShowEvidence,
+  sample = false,
 }: {
+  sample?: boolean;
   report: Report;
   state: CaseTaskState;
   onChange: (next: CaseTaskState) => void;
@@ -98,6 +100,7 @@ export function RecoveryBoard({
                         Discharge checklist ({local.checkedCriterionIds.length}/{t.criteria.length})
                       </summary>
                       <DischargeChecklist
+                        sample={sample}
                         task={t}
                         local={local}
                         onToggle={(cid, checked) => onChange(toggleCriterion(state, report, t.id, cid, checked))}

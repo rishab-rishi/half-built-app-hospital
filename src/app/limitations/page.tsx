@@ -11,6 +11,10 @@ export default function LimitationsPage() {
         <li>It is not a security audit, compliance check, or certification, and it cannot tell you an app is safe to deploy.</li>
         <li>Anything involving authentication, payments, or data loss should be checked by a qualified engineer, in staging first.</li>
         <li>&quot;Verified&quot; on the recovery board means you confirmed the checks yourself.</li>
+        <li>
+          Live assessments have per-visitor and site-wide limits. Daily limits reset at 00:00 UTC and monthly limits on
+          the 1st of each month (UTC). Shared networks can reach a limit sooner. The sample patients are always available.
+        </li>
       </ul>
     </article>
   );

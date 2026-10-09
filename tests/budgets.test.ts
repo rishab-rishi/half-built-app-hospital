@@ -80,6 +80,18 @@ describe("parallel requests never overspend", () => {
     const a = await h.admit();
     const t = await h.triage(a.caseId, a.cookie);
     expect(t.json.error).toBe("capacity_reached");
+    // A daily cap is not a short wait: no Retry-After, the visitor is pointed at the samples.
+    expect(t.res.headers.get("retry-after")).toBeNull();
+    calls(0);
+  });
+
+  it("the global per-minute token cap says how long to wait instead of 'used up for today'", async () => {
+    h.config.limits.globalTokensPerMinute = 100;
+    const a = await h.admit();
+    const t = await h.triage(a.caseId, a.cookie);
+    expect(t.json.error).toBe("capacity_reached");
+    expect(Number(t.res.headers.get("retry-after"))).toBeGreaterThan(0);
+    expect(Number(t.res.headers.get("retry-after"))).toBeLessThanOrEqual(60);
     calls(0);
   });
 
@@ -305,7 +317,7 @@ describe("logging", () => {
     for (const forbidden of [c.cookie.split("=")[1], c.ticket, "203.0.113.7", "Double", "tok-"]) {
       expect(dump).not.toContain(forbidden);
     }
-    expect(Object.keys(h.logs[1]).sort()).toEqual(["latencyMs", "outcome", "promptVersion", "requestId", "stage", "totalTokens"]);
+    expect(Object.keys(h.logs[1]).sort()).toEqual(["latencyMs", "model", "outcome", "promptVersion", "requestId", "stage", "totalTokens"]);
   });
 });
 

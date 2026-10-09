@@ -11,7 +11,9 @@ export function DischargeChecklist({
   onToggle,
   onConfirm,
   onNote,
+  sample = false,
 }: {
+  sample?: boolean;
   task: Task;
   local: TaskLocalState;
   onToggle: (criterionId: string, checked: boolean) => void;
@@ -22,6 +24,7 @@ export function DischargeChecklist({
   return (
     <fieldset className="mt-3 space-y-2 rounded-md border p-3">
       <legend className="px-1 text-sm font-medium">How will I know this is fixed?</legend>
+      {sample && <p className="text-xs font-semibold">Fictional sample - not an assessment of your app.</p>}
       <p className="text-xs text-muted-foreground">
         Run these checks yourself, ideally in staging. Ticking a box records your own confirmation; it is
         not an AI or security certification.

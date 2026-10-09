@@ -31,6 +31,7 @@ test("sample journey works with live AI disabled and makes no API calls", async 
   await expect(card.getByRole("alert")).toContainText("Check every criterion");
 
   await card.locator("summary").click();
+  await expect(card.locator("fieldset")).toContainText("Fictional sample - not an assessment of your app.");
   const boxes = card.locator("fieldset input[type=checkbox]");
   const n = await boxes.count();
   for (let i = 0; i < n - 1; i++) await boxes.nth(i).check();
