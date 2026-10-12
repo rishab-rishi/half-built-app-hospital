@@ -44,6 +44,8 @@ Vitest · Playwright
 
 ## Getting started
 
+Requires Node 24 (see `.nvmrc`; `nvm use` picks it up) and npm 11.
+
 ```bash
 npm install
 cp .env.example .env.local   # then fill in values; never commit .env.local
