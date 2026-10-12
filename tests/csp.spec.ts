@@ -56,7 +56,7 @@ test("the page still hydrates: interactive controls work under the policy", asyn
   await inProgress.click();
   await expect(inProgress).toHaveAttribute("aria-pressed", "true");
   await page.getByRole("button", { name: /View evidence/ }).first().click();
-  await expect(page.getByRole("dialog")).toBeVisible();
+  await expect(page.getByRole("region", { name: "Why this finding?" })).toBeVisible();
   expect(await watch.violations()).toEqual([]);
 });
 

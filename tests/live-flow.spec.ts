@@ -98,12 +98,13 @@ test("full live journey with fresh challenges and a clearly live report", async 
     { questionId: "q2", text: "I don't know" },
   ]);
 
-  // Evidence drawer shows the visitor's own supplied text, with no sample label.
+  // Evidence panel shows the visitor's own supplied text, with no sample label.
   await page.getByRole("button", { name: /View evidence/ }).first().click();
-  const drawer = page.getByRole("dialog");
-  await expect(drawer).toContainText("Why this finding?");
-  await expect(drawer).not.toContainText("Fictional sample");
+  const panel = page.getByRole("region", { name: "Why this finding?" });
+  await expect(panel).toBeVisible();
+  await expect(panel).not.toContainText("Fictional sample");
   await page.keyboard.press("Escape");
+  await expect(panel).toBeHidden();
 
   // Clear case wipes everything back to an empty form.
   await page.getByRole("button", { name: "Clear case" }).click();
@@ -172,17 +173,17 @@ test("sample mode: no form, no live calls, samples one click away", async ({ pag
   });
   await page.route("**/api/status", (r) => json(r, 200, { mode: "sample" }));
   await page.goto("/admission");
-  await expect(page.getByText("The hospital is busy")).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Live admissions are paused." })).toBeVisible();
   await expect(page.getByLabel("App title")).toHaveCount(0);
-  await page.getByRole("link", { name: "Explore a sample patient" }).click();
-  await expect(page).toHaveURL("/");
+  await page.getByRole("link", { name: "Explore a sample chart" }).click();
+  await expect(page).toHaveURL("/#samples");
   expect(calls).toEqual([]);
 });
 
 test("a failed status check never blocks the samples", async ({ page }) => {
   await page.route("**/api/status", (r) => r.abort());
   await page.goto("/admission");
-  await expect(page.getByText("The hospital is busy")).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Live admissions are paused." })).toBeVisible();
   await page.goto("/chart/saas-portal-access");
   await expect(page.getByRole("heading", { level: 1 })).toContainText("SaaS Portal");
 });
@@ -239,7 +240,9 @@ test("opting in keeps the case and checklist progress across a reload; Clear cas
   await page.getByRole("button", { name: "Restore saved case" }).click();
   await expect(page.getByText("Provisional AI assessment of the details you supplied")).toBeVisible();
   await expect(page.getByLabel(/Keep this case/)).toBeChecked();
-  await expect(page.getByRole("region", { name: "In progress" })).toContainText("Reproduce the race");
+  await expect(
+    page.locator("li", { hasText: "Reproduce the race condition" }).first().getByRole("button", { name: "In progress" }),
+  ).toHaveAttribute("aria-pressed", "true");
 
   await page.getByRole("button", { name: "Clear case" }).click();
   expect(await savedKey(page)).toBeNull();

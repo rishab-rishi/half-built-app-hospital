@@ -4,13 +4,13 @@ export const metadata = { title: "Terms - Half-Built App Hospital" };
 
 export default function TermsPage() {
   return (
-    <article className="max-w-2xl space-y-4">
-      <h1 className="text-2xl font-bold">Terms</h1>
-      <p role="note" className="rounded-lg border border-amber-500/50 bg-amber-50 p-3 text-sm text-amber-950 dark:bg-amber-950/30 dark:text-amber-100">
+    <article className="policy">
+      <h1>Terms</h1>
+      <p role="note" className="notice">
         <strong>Draft for review.</strong> Not yet reviewed by a lawyer, and live assessments stay off until the
         final text and contact address are published.
       </p>
-      <p className="text-sm text-muted-foreground">
+      <p className="meta">
         Version {TERMS_VERSION}. Operator: Rishab Chowdary. Contact: [PUBLIC CONTACT ADDRESS - to be set before launch].
       </p>
       <p>

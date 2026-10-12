@@ -9,25 +9,30 @@ test("sample journey works with live AI disabled and makes no API calls", async 
 
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "What this demo can prove" })).toBeVisible();
-  await page.getByRole("link", { name: /Open chart for The Booking App/ }).click();
+  await page.getByRole("link", { name: /Open patient chart.*Booking App/ }).click();
 
   await expect(page.getByRole("heading", { level: 1 })).toContainText("Booking App");
   await expect(page.getByRole("note").filter({ hasText: "Fictional sample" })).toBeVisible();
 
-  // Evidence drawer: opens by click, shows supplied text, closes with Escape, restores focus.
-  const trigger = page.getByRole("button", { name: /View evidence/ }).first();
+  // Evidence opens inline beside its finding: by keyboard, showing supplied text, closed with Escape, focus kept.
+  // A stable locator: the button renames itself "Hide evidence" once open.
+  const trigger = page.locator("#observations").getByRole("button", { name: /evidence/ }).first();
+  await expect(trigger).toHaveAttribute("aria-expanded", "false");
   await trigger.focus();
   await page.keyboard.press("Enter");
-  const drawer = page.getByRole("dialog");
-  await expect(drawer).toContainText("Why this finding?");
-  await expect(drawer).toContainText("Fictional sample");
+  await expect(trigger).toHaveAttribute("aria-expanded", "true");
+  const panel = page.getByRole("region", { name: "Why this finding?" });
+  await expect(panel).toBeVisible();
+  await expect(panel).toContainText("Fictional sample");
+  await expect(panel).toContainText("has not been independently verified");
   await page.keyboard.press("Escape");
-  await expect(drawer).toBeHidden();
+  await expect(panel).toBeHidden();
   await expect(trigger).toBeFocused();
+  await expect(trigger).toHaveAttribute("aria-expanded", "false");
 
   // Verified is blocked until criteria are checked and confirmed.
   const card = page.locator("li", { hasText: "Reproduce the race condition" }).first();
-  await card.getByRole("button", { name: "Verified", exact: true }).click();
+  await card.getByRole("button", { name: "Verified by you" }).click();
   await expect(card.getByRole("alert")).toContainText("Check every criterion");
 
   await card.locator("summary").click();
@@ -35,13 +40,13 @@ test("sample journey works with live AI disabled and makes no API calls", async 
   const boxes = card.locator("fieldset input[type=checkbox]");
   const n = await boxes.count();
   for (let i = 0; i < n - 1; i++) await boxes.nth(i).check();
-  await card.getByRole("button", { name: "Verified", exact: true }).click();
+  await card.getByRole("button", { name: "Verified by you" }).click();
   await expect(card.getByRole("alert")).toContainText("I performed these checks");
 
   await card.getByLabel("I performed these checks").check();
-  await card.getByRole("button", { name: "Verified", exact: true }).click();
+  await card.getByRole("button", { name: "Verified by you" }).click();
   await expect(page.getByTestId("progress")).toContainText("1 of");
-  await expect(page.getByRole("region", { name: "Verified (by you)" })).toContainText("Reproduce the race");
+  await expect(card.getByRole("button", { name: "Verified by you" })).toHaveAttribute("aria-pressed", "true");
 
   // Export: default omits the full intake and labels the sample.
   const [download] = await Promise.all([
@@ -63,9 +68,9 @@ test("sample journey works with live AI disabled and makes no API calls", async 
 
 test("script-like text renders inert and admission shows sample fallback", async ({ page }) => {
   await page.goto("/admission");
-  await expect(page.getByText("The hospital is busy")).toBeVisible();
-  await page.getByRole("link", { name: "Explore a sample patient" }).click();
-  await expect(page).toHaveURL("/");
+  await expect(page.getByRole("heading", { level: 1, name: "Live admissions are paused." })).toBeVisible();
+  await page.getByRole("link", { name: "Explore a sample chart" }).click();
+  await expect(page).toHaveURL("/#samples");
 });
 
 test("no horizontal scroll on a chart page", async ({ page }) => {
@@ -104,6 +109,9 @@ test("pages carry the baseline security headers", async ({ request }) => {
 test("the quality card shows the measured, versioned evaluation including misses", async ({ page }) => {
   await page.goto("/");
   const card = page.getByRole("region", { name: "What this demo can prove" });
+  // The scope statement is always visible; the measured results (misses included) sit in a labelled disclosure.
+  await expect(card).toContainText("no repository inspection, code execution, or security certification");
+  await card.getByText("How this was measured, including what was not met").click();
   await expect(card).toContainText("Measured 2026-10-09 on 18 fictional cases");
   await expect(card).toContainText("not met:");
   await expect(card).toContainText("tuned using these same 18 cases");

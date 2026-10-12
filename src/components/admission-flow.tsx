@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { ChartView } from "@/components/chart-view";
 import { TurnstileWidget } from "@/components/turnstile-widget";
 import { describeFailure, postJson, type ApiFailure, type FailureView } from "@/lib/api-client";
@@ -253,12 +253,12 @@ export function AdmissionFlow() {
           initialTaskState={restoredTasks}
           onTaskStateChange={onTasksChanged}
         />
-        <section aria-labelledby="remember-h" className="rounded-xl border p-4">
-          <h2 id="remember-h" className="text-lg font-semibold">
+        <section aria-labelledby="remember-h" className="paper p-5">
+          <h2 id="remember-h" className="section-title text-[1.625rem]">
             Remember in this tab
           </h2>
-          <label className="mt-2 flex items-start gap-2 text-sm">
-            <input type="checkbox" className="mt-1 size-4" checked={remember} onChange={(e) => toggleRemember(e.target.checked)} />
+          <label className="mt-3 flex min-h-11 items-start gap-3 text-[0.9375rem]">
+            <input type="checkbox" className="mt-1 size-5 shrink-0" checked={remember} onChange={(e) => toggleRemember(e.target.checked)} />
             <span>
               Keep this case, including your checklist progress, in this browser tab&apos;s session storage so a refresh
               does not lose it. It stays on this device only. It may survive if the browser restores the session, and
@@ -271,16 +271,16 @@ export function AdmissionFlow() {
   }
 
   const alert = failure && (
-    <div ref={alertRef} tabIndex={-1} role="alert" data-testid="failure-alert" className="rounded-lg border border-destructive/50 p-4 text-sm">
+    <div ref={alertRef} tabIndex={-1} role="alert" data-testid="failure-alert" className="notice">
       <p>{failure.message}</p>
       <div className="mt-2 flex flex-wrap gap-3">
         {failure.offerSample && (
-          <Link href="/" onClick={confirmLeave} className="font-medium underline">
+          <Link href="/" onClick={confirmLeave} className="inline-flex min-h-11 items-center font-medium underline">
             Explore a sample patient
           </Link>
         )}
         {!failure.canRetry && phase !== "form" && (
-          <button type="button" className="font-medium underline" onClick={resetAll}>
+          <button type="button" className="inline-flex min-h-11 items-center font-medium underline" onClick={resetAll}>
             Start a new case
           </button>
         )}
@@ -288,21 +288,40 @@ export function AdmissionFlow() {
     </div>
   );
 
-  if (mode.state === "loading") return <p role="status">Checking whether the hospital is open...</p>;
+  if (mode.state === "loading") {
+    return (
+      <div className="max-w-2xl">
+        <AdmissionHeading />
+        <p role="status" className="mt-6 text-muted-foreground">
+          Checking whether the hospital is open...
+        </p>
+      </div>
+    );
+  }
 
   if (mode.state === "sample") {
     return (
-      <div className="space-y-4">
-        <p
-          role="status"
-          className="rounded-lg border border-amber-500/50 bg-amber-50 p-4 text-sm text-amber-950 dark:bg-amber-950/30 dark:text-amber-100"
-        >
-          <strong>The hospital is busy.</strong> Live assessments are not switched on right now. You can still
-          explore a fictional sample patient, check the evidence behind each finding, and download a plan.
+      <div className="max-w-2xl">
+        <AdmissionHeading paused />
+        <p role="status" className="mt-6 text-lg leading-relaxed">
+          Live assessments are not switched on right now, so the admissions desk cannot take a new patient. Nothing
+          is broken, and nothing you type here is sent anywhere.
         </p>
-        <Link href="/" className="inline-block rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">
-          Explore a sample patient
-        </Link>
+        <dl className="paper mt-8 divide-y divide-border">
+          <div className="grid gap-1 p-5 sm:grid-cols-[11rem_1fr] sm:gap-6">
+            <dt className="label-mono pt-1">Sample charts</dt>
+            <dd>Open. Three fictional patients with full charts, evidence, a checklist and a downloadable plan.</dd>
+          </div>
+          <div className="grid gap-1 p-5 sm:grid-cols-[11rem_1fr] sm:gap-6">
+            <dt className="label-mono pt-1">Live admissions</dt>
+            <dd>Paused. They are switched off by the site operator; this page reads that setting each time it opens.</dd>
+          </div>
+        </dl>
+        <div className="mt-8">
+          <Link href="/#samples" className={buttonVariants({ size: "lg" })}>
+            Explore a sample chart
+          </Link>
+        </div>
       </div>
     );
   }
@@ -310,11 +329,12 @@ export function AdmissionFlow() {
   if (phase === "admitted" || phase === "questions") {
     const isTriage = phase === "admitted";
     return (
-      <div className="space-y-4">
+      <div className="max-w-2xl space-y-5">
+        <AdmissionHeading />
         {alert}
         {isTriage ? (
           <section aria-labelledby="triage-h" className="space-y-3">
-            <h2 id="triage-h" className="text-lg font-semibold">
+            <h2 id="triage-h" className="section-title text-[1.625rem]">
               Triage
             </h2>
             <p className="text-sm">
@@ -324,7 +344,7 @@ export function AdmissionFlow() {
           </section>
         ) : (
           <section aria-labelledby="q-h" className="space-y-4">
-            <h2 id="q-h" className="text-lg font-semibold">
+            <h2 id="q-h" className="section-title text-[1.625rem]">
               {questions.length ? "A few clarifying questions" : "No clarifying questions needed"}
             </h2>
             <p className="text-sm text-muted-foreground">
@@ -333,13 +353,13 @@ export function AdmissionFlow() {
             </p>
             {questions.map((q) => (
               <div key={q.id} className="space-y-1">
-                <label htmlFor={`ans-${q.id}`} className="block text-sm font-medium break-words">
+                <label htmlFor={`ans-${q.id}`} className="block text-[0.9375rem] font-medium break-words">
                   {q.text}
                 </label>
-                <p className="text-xs text-muted-foreground break-words">Why it matters: {q.why}</p>
+                <p className="text-sm text-muted-foreground break-words">Why it matters: {q.why}</p>
                 <textarea
                   id={`ans-${q.id}`}
-                  className="w-full rounded-md border bg-background p-2 text-sm"
+                  className="field"
                   rows={3}
                   maxLength={LIMITS.answer}
                   value={answers[q.id] ?? ""}
@@ -348,12 +368,12 @@ export function AdmissionFlow() {
                 <div className="flex items-center justify-between">
                   <button
                     type="button"
-                    className="text-xs underline"
+                    className="inline-flex min-h-11 items-center text-sm underline"
                     onClick={() => setAnswers((a) => ({ ...a, [q.id]: "I don't know" }))}
                   >
                     I don&apos;t know
                   </button>
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-sm text-muted-foreground">
                     {(answers[q.id] ?? "").length}/{LIMITS.answer}
                   </span>
                 </div>
@@ -386,12 +406,13 @@ export function AdmissionFlow() {
   }
 
   return (
-    <form onSubmit={submitAdmission} noValidate className="space-y-5" aria-describedby="privacy-notice">
-      <p id="privacy-notice" role="note" className="rounded-lg border p-4 text-sm">
+    <form onSubmit={submitAdmission} noValidate className="max-w-2xl space-y-6" aria-describedby="privacy-notice">
+      <AdmissionHeading />
+      <p id="privacy-notice" role="note" className="notice">
         {NOTICE}
       </p>
       {saved && (
-        <div role="region" aria-label="Saved case" className="rounded-lg border p-4 text-sm">
+        <div role="region" aria-label="Saved case" className="paper p-5 text-[0.9375rem]">
           <p>
             You chose to remember <strong className="break-words">{saved.intake.title}</strong> in this tab (saved{" "}
             {new Date(saved.savedAt).toLocaleString()}). It is shown as saved; it is not re-checked.
@@ -422,26 +443,26 @@ export function AdmissionFlow() {
       )}
 
       <Field id="title" label="App title" error={fieldErrors.title} count={form.title.length} max={LIMITS.title}>
-        <input id="title" className="w-full rounded-md border bg-background p-2 text-sm" maxLength={LIMITS.title} value={form.title} onChange={set("title")} aria-invalid={!!fieldErrors.title} />
+        <input id="title" className="field" maxLength={LIMITS.title} value={form.title} onChange={set("title")} aria-invalid={!!fieldErrors.title} />
       </Field>
       <Field id="purpose" label="What is the app meant to do?" error={fieldErrors.purpose} count={form.purpose.length} max={LIMITS.purpose}>
-        <textarea id="purpose" rows={3} className="w-full rounded-md border bg-background p-2 text-sm" maxLength={LIMITS.purpose} value={form.purpose} onChange={set("purpose")} aria-invalid={!!fieldErrors.purpose} />
+        <textarea id="purpose" rows={3} className="field" maxLength={LIMITS.purpose} value={form.purpose} onChange={set("purpose")} aria-invalid={!!fieldErrors.purpose} />
       </Field>
       <Field id="stack" label="Technology stack (comma separated)" error={fieldErrors.stackText}>
-        <input id="stack" className="w-full rounded-md border bg-background p-2 text-sm" value={form.stackText} onChange={set("stackText")} aria-invalid={!!fieldErrors.stackText} />
+        <input id="stack" className="field" value={form.stackText} onChange={set("stackText")} aria-invalid={!!fieldErrors.stackText} />
       </Field>
       <Field id="working" label="What works today? (one per line)" error={fieldErrors.workingText}>
-        <textarea id="working" rows={3} className="w-full rounded-md border bg-background p-2 text-sm" value={form.workingText} onChange={set("workingText")} aria-invalid={!!fieldErrors.workingText} />
+        <textarea id="working" rows={3} className="field" value={form.workingText} onChange={set("workingText")} aria-invalid={!!fieldErrors.workingText} />
       </Field>
       <Field id="symptoms" label="What fails or looks wrong?" error={fieldErrors.symptoms} count={form.symptoms.length} max={LIMITS.symptoms}>
-        <textarea id="symptoms" rows={4} className="w-full rounded-md border bg-background p-2 text-sm" maxLength={LIMITS.symptoms} value={form.symptoms} onChange={set("symptoms")} aria-invalid={!!fieldErrors.symptoms} />
+        <textarea id="symptoms" rows={4} className="field" maxLength={LIMITS.symptoms} value={form.symptoms} onChange={set("symptoms")} aria-invalid={!!fieldErrors.symptoms} />
       </Field>
       <Field id="error" label="Redacted error excerpt (optional)" error={fieldErrors.error} count={form.error.length} max={LIMITS.error}>
-        <textarea id="error" rows={4} className="w-full rounded-md border bg-background p-2 font-mono text-sm" maxLength={LIMITS.error} value={form.error} onChange={set("error")} aria-invalid={!!fieldErrors.error} />
+        <textarea id="error" rows={4} className="field font-mono text-[0.9375rem]" maxLength={LIMITS.error} value={form.error} onChange={set("error")} aria-invalid={!!fieldErrors.error} />
       </Field>
 
-      <label className="flex items-start gap-2 text-sm">
-        <input type="checkbox" className="mt-1 size-4" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />
+      <label className="flex min-h-11 items-start gap-3 text-[0.9375rem]">
+        <input type="checkbox" className="mt-1 size-5 shrink-0" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />
         <span>
           I agree to the{" "}
           <Link href="/terms" target="_blank" className="underline">
@@ -461,11 +482,23 @@ export function AdmissionFlow() {
         <Button type="submit" disabled={!agreed || !token || busy !== null}>
           {busy ? "Admitting..." : "Admit my app"}
         </Button>
-        <Link href="/" onClick={confirmLeave} className="self-center text-sm underline">
+        <Link href="/" onClick={confirmLeave} className="inline-flex min-h-11 items-center self-center underline">
           Explore a sample patient instead
         </Link>
       </div>
     </form>
+  );
+}
+
+/** The page heading lives here so the report view, which has its own title, does not get two h1s. */
+function AdmissionHeading({ paused = false }: { paused?: boolean }) {
+  return (
+    <header className="mb-2">
+      <p className="label-mono">Admissions desk</p>
+      <h1 className="display mt-3 text-[clamp(2.5rem,5vw,3.75rem)]">
+        {paused ? "Live admissions are paused." : "Admit your app"}
+      </h1>
+    </header>
   );
 }
 
@@ -485,12 +518,12 @@ function Field({
   children: React.ReactNode;
 }) {
   return (
-    <div className="space-y-1">
-      <label htmlFor={id} className="block text-sm font-medium">
+    <div className="space-y-1.5">
+      <label htmlFor={id} className="block text-[0.9375rem] font-medium">
         {label}
       </label>
       {children}
-      <div className="flex justify-between text-xs">
+      <div className="flex justify-between text-sm">
         <span role={error ? "alert" : undefined} className="text-destructive">
           {error}
         </span>

@@ -2,9 +2,9 @@ export const metadata = { title: "Limitations - Half-Built App Hospital" };
 
 export default function LimitationsPage() {
   return (
-    <article className="max-w-2xl space-y-4">
-      <h1 className="text-2xl font-bold">Limitations</h1>
-      <ul className="list-disc space-y-2 pl-5">
+    <article className="policy">
+      <h1>Limitations</h1>
+      <ul>
         <li>The demo reads only the text you provide. It does not inspect your repository, run your code, or scan your app.</li>
         <li>Results are AI-generated, provisional, and can be wrong or incomplete. Review every suggestion yourself.</li>
         <li>Findings that point to supplied evidence are still based on information that has not been independently verified.</li>

@@ -23,9 +23,7 @@ for (const scheme of ["light", "dark"] as const) {
       await page.goto("/chart/booking-double-reservations");
       await page.locator("summary").first().click();
       await page.getByRole("button", { name: /View evidence/ }).first().click();
-      await expect(page.getByRole("dialog")).toBeVisible();
-      // toBeVisible passes mid-fade; contrast measured on a half-transparent sheet is meaningless.
-      await page.evaluate(() => Promise.all(document.getAnimations().map((a) => a.finished)));
+      await expect(page.getByRole("region", { name: "Why this finding?" })).toBeVisible();
       expect(await violations(page)).toEqual([]);
     });
   });
