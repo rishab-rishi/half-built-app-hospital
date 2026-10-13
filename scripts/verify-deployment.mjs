@@ -58,6 +58,14 @@ const nonceOf = (r) => /'nonce-([^']+)'/.exec(`${r.h("content-security-policy") 
 const n1 = nonceOf(home);
 const n2 = nonceOf(await req("/"));
 pass("Nonce changes on every request", Boolean(n1 && n2 && n1 !== n2));
+// A nonce in the header is not enough: the page's own script tags must carry it, or enforcing the policy breaks the site.
+const scriptTags = [...home.text.matchAll(/<script\b[^>]*>/g)].map((m) => m[0]);
+const noncedTags = scriptTags.filter((t) => /\snonce=/.test(t)).length;
+record(
+  noncedTags === scriptTags.length && scriptTags.length > 0 ? "PASS" : /'nonce-/.test(enforced) ? "FAIL" : "WARN",
+  "Every script tag in the page carries the nonce",
+  noncedTags === scriptTags.length ? "" : `${noncedTags} of ${scriptTags.length}: do NOT enforce the policy until this passes`,
+);
 
 // --- status and API behaviour
 const status = await req("/api/status");
