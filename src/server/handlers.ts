@@ -32,7 +32,7 @@ import {
 } from "@/lib/sessions";
 import { signTicket, verifyTicket } from "@/lib/tickets";
 import { estimateTokens, MAX_INPUT_TOKENS, MAX_OUTPUT_TOKENS } from "@/lib/tokens";
-import { verifyTurnstile } from "@/lib/turnstile";
+import { checkTurnstile } from "@/lib/turnstile";
 
 /* ---------- Dependencies (injected) ---------- */
 
@@ -44,6 +44,8 @@ export type LogEvent = {
   promptVersion?: string;
   model?: string;
   totalTokens?: number;
+  /** Fixed-vocabulary reason for a failed challenge (a Cloudflare error code or which comparison failed). */
+  detail?: string;
 };
 
 export type Deps = {
@@ -209,7 +211,7 @@ async function challenge(
   cdata?: string,
 ): Promise<boolean> {
   const { config, fetch: fetchImpl } = ctx.deps;
-  return verifyTurnstile({
+  const result = await checkTurnstile({
     token,
     secret: config.secrets.turnstile,
     action,
@@ -217,6 +219,17 @@ async function challenge(
     cdata,
     fetchImpl,
   });
+  if (!result.ok) {
+    // The visitor only ever sees "challenge failed"; the reason goes to the operator logs.
+    ctx.deps.log({
+      requestId: ctx.requestId,
+      stage: action === "admission" ? "session" : action,
+      outcome: "challenge_detail",
+      latencyMs: 0,
+      detail: result.reason,
+    });
+  }
+  return result.ok;
 }
 
 function stateFailure(state: string | undefined, requestId: string): Response {
