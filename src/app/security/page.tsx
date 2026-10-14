@@ -4,12 +4,8 @@ export default function SecurityPage() {
   return (
     <article className="policy">
       <h1>Security contact</h1>
-      <p role="note" className="notice">
-        <strong>Draft.</strong> The reporting address below is a placeholder and must be set before live assessments
-        are enabled.
-      </p>
       <p>
-        To report a vulnerability, email [PUBLIC CONTACT ADDRESS - to be set before launch]. Please describe what you
+        To report a vulnerability, email <a href="mailto:cold.start001@gmail.com">cold.start001@gmail.com</a>. Please describe what you
         found and how to reproduce it.
       </p>
       <ul>

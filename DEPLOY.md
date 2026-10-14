@@ -43,7 +43,7 @@ Everything below that says **you** needs one of your accounts or a decision only
 
 The terms, privacy and security pages are **drafts**. Before enabling live mode:
 
-- [ ] Replace every `[PUBLIC CONTACT ADDRESS ...]` placeholder (terms, privacy, security, `SECURITY.md`) with an
+- [x] Replace every `[PUBLIC CONTACT ADDRESS ...]` placeholder (terms, privacy, security, `SECURITY.md`) with an
       address you are happy to publish. Do not publish a personal phone number.
 - [ ] Privacy notice: fill the bracketed items with **verified** facts: host log retention, Groq retention setting,
       and links to each provider's current privacy policy.

@@ -7,11 +7,10 @@ export default function TermsPage() {
     <article className="policy">
       <h1>Terms</h1>
       <p role="note" className="notice">
-        <strong>Draft for review.</strong> Not yet reviewed by a lawyer, and live assessments stay off until the
-        final text and contact address are published.
+        <strong>Draft for review.</strong> Not yet reviewed by a lawyer.
       </p>
       <p className="meta">
-        Version {TERMS_VERSION}. Operator: Rishab Chowdary. Contact: [PUBLIC CONTACT ADDRESS - to be set before launch].
+        Version {TERMS_VERSION}. Operator: Rishab Chowdary. Contact: <a href="mailto:cold.start001@gmail.com">cold.start001@gmail.com</a>.
       </p>
       <p>
         Half-Built App Hospital is an experimental software-planning demo operated by Rishab Chowdary. It produces

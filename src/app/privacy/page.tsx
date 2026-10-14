@@ -2,16 +2,18 @@ import { PRIVACY_VERSION } from "@/lib/policy";
 
 export const metadata = { title: "Privacy - Half-Built App Hospital" };
 
+const CONTACT = "cold.start001@gmail.com";
+
 export default function PrivacyPage() {
   return (
     <article className="policy">
       <h1>Privacy Notice</h1>
       <p role="note" className="notice">
-        <strong>Draft for review.</strong> Items in [brackets] are not yet verified against the deployed system and
-        must be confirmed before live assessments are enabled.
+        <strong>Draft for review.</strong> Not yet reviewed by a lawyer. Any item in [brackets] has not yet been
+        confirmed against the deployed system.
       </p>
       <p className="meta">
-        Version {PRIVACY_VERSION}. Contact: [PUBLIC CONTACT ADDRESS - to be set before launch].
+        Version {PRIVACY_VERSION}. Contact for privacy questions: <a href={`mailto:${CONTACT}`}>{CONTACT}</a>.
       </p>
       <p>
         We process the app details and answers you submit to generate an assessment through Groq. We do not
@@ -31,14 +33,28 @@ export default function PrivacyPage() {
       </ul>
       <h2>Providers</h2>
       <ul>
-        <li>Vercel: hosting and connection metadata.</li>
-        <li>Groq: receives the text you submit to produce the assessment. [Data-retention setting to be verified in the account before launch.]</li>
-        <li>Upstash: Redis for the short-lived records above.</li>
-        <li>Cloudflare Turnstile: human check; processes connection and browser signals.</li>
+        <li>
+          Vercel: hosting and connection metadata.{" "}
+          <a href="https://vercel.com/legal/privacy-notice">Privacy notice</a>.
+        </li>
+        <li>
+          Groq: receives the text you submit to produce the assessment. Zero Data Retention is enabled for inference
+          on our Groq account (checked in the account on 14 October 2026), so Groq is configured not to store the
+          inputs and outputs. Groq still collects usage metadata, such as token counts.{" "}
+          <a href="https://groq.com/privacy-policy">Privacy policy</a>.
+        </li>
+        <li>
+          Upstash: Redis for the short-lived records above.{" "}
+          <a href="https://upstash.com/trust/privacy.pdf">Privacy policy (PDF)</a>.
+        </li>
+        <li>
+          Cloudflare Turnstile: human check; processes connection and browser signals.{" "}
+          <a href="https://www.cloudflare.com/privacypolicy/">Privacy policy</a>.
+        </li>
       </ul>
       <p>
-        These providers may process data outside your country. [Links to each provider&apos;s current privacy policy to
-        be added before launch.]
+        These providers may process data outside your country. Their own policies describe how they handle data;
+        they can change, so check them for the current terms.
       </p>
     </article>
   );
