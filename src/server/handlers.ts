@@ -112,6 +112,12 @@ function fail(category: Category, requestId: string, retryAfterSec?: number): Re
   return res;
 }
 
+/** A 403 that records which check refused it. The visitor gets the same generic answer either way. */
+function forbid(deps: Deps, stage: LogEvent["stage"], requestId: string, detail: string): Response {
+  deps.log({ requestId, stage, outcome: "forbidden_detail", latencyMs: 0, detail });
+  return fail("forbidden", requestId);
+}
+
 function denyCounter(c: Counter, requestId: string): Response {
   if (c.scope !== "global") return fail("rate_limited", requestId, c.retryAfterSec);
   // A global per-minute cap clears within a minute, so say when; day and month caps point to the samples.
@@ -184,17 +190,17 @@ async function gate<T>(
   return { ctx: { deps, requestId, ipHash }, body: parsed.data };
 }
 
-async function authSession(req: Request, ctx: Ctx): Promise<Response | { sessionHash: string }> {
+async function authSession(req: Request, ctx: Ctx, stage: LogEvent["stage"]): Promise<Response | { sessionHash: string }> {
   const { config, store } = ctx.deps;
   const sessionHash = parseSessionCookie(
     req.headers.get("cookie"),
     cookieName(config.secureCookies),
     config.secrets.session,
   );
-  if (!sessionHash) return fail("forbidden", ctx.requestId);
+  if (!sessionHash) return forbid(ctx.deps, stage, ctx.requestId, "no_session_cookie");
   try {
     const rec = await store.hgetall(keys.session(config.namespace, sessionHash));
-    if (!rec) return fail("forbidden", ctx.requestId);
+    if (!rec) return forbid(ctx.deps, stage, ctx.requestId, "session_not_in_store");
     if (rec.terms !== config.termsVersion || rec.privacy !== config.privacyVersion) {
       return fail("consent_required", ctx.requestId);
     }
@@ -357,7 +363,7 @@ async function sessionFlow(req: Request, deps: Deps, requestId: string): Promise
       nowIso: new Date(deps.now()).toISOString(),
     });
     if (!result.ok) {
-      return result.reason === "counter" ? denyCounter(result.counter, requestId) : fail("forbidden", requestId);
+      return result.reason === "counter" ? denyCounter(result.counter, requestId) : forbid(deps, "session", requestId, "admit_no_session");
     }
     // `cdata` binds later Turnstile widgets to this session. It is a one-way hash, useless without the cookie.
     return respond({ caseId, cdata: sessionHash }, 200, requestId, newCookie ? { "Set-Cookie": newCookie } : {});
@@ -382,13 +388,14 @@ async function triageFlow(req: Request, deps: Deps, requestId: string, extra: Pa
   const { ctx, body } = g;
   const { config, store } = deps;
 
-  const auth = await authSession(req, ctx);
+  const auth = await authSession(req, ctx, "triage");
   if (auth instanceof Response) return auth;
   const { sessionHash } = auth;
 
   try {
     const rec = await store.hgetall(keys.caseRec(config.namespace, body.caseId));
-    if (!rec || rec.sessionHash !== sessionHash) return fail("forbidden", requestId);
+    if (!rec) return forbid(deps, "triage", requestId, "case_not_found_or_expired");
+    if (rec.sessionHash !== sessionHash) return forbid(deps, "triage", requestId, "case_session_mismatch");
     if (rec.state !== "admitted") return stateFailure(rec.state, requestId);
   } catch {
     return fail("provider_unavailable", requestId);
@@ -490,17 +497,18 @@ async function diagnoseFlow(req: Request, deps: Deps, requestId: string, extra: 
   const { ctx, body } = g;
   const { config, store } = deps;
 
-  const auth = await authSession(req, ctx);
+  const auth = await authSession(req, ctx, "diagnose");
   if (auth instanceof Response) return auth;
   const { sessionHash } = auth;
 
   const ticket = verifyTicket(config.secrets.ticket, body.ticket, deps.now());
-  if (!ticket || ticket.caseId !== body.caseId || ticket.sessionHash !== sessionHash) {
-    return fail("forbidden", requestId);
+  if (!ticket) return forbid(deps, "diagnose", requestId, "ticket_invalid_or_expired");
+  if (ticket.caseId !== body.caseId || ticket.sessionHash !== sessionHash) {
+    return forbid(deps, "diagnose", requestId, "ticket_case_or_session_mismatch");
   }
   // The browser holds the case; it may not change it between stages.
   if (hashOf(body.intake) !== ticket.intakeHash || hashOf(body.questions) !== ticket.questionsHash) {
-    return fail("forbidden", requestId);
+    return forbid(deps, "diagnose", requestId, "intake_or_questions_changed");
   }
   const askedIds = new Set(body.questions.map((q) => q.id));
   const answered = new Set<string>();
@@ -511,11 +519,12 @@ async function diagnoseFlow(req: Request, deps: Deps, requestId: string, extra: 
 
   try {
     const rec = await store.hgetall(keys.caseRec(config.namespace, body.caseId));
-    if (!rec || rec.sessionHash !== sessionHash) return fail("forbidden", requestId);
+    if (!rec) return forbid(deps, "diagnose", requestId, "case_not_found_or_expired");
+    if (rec.sessionHash !== sessionHash) return forbid(deps, "diagnose", requestId, "case_session_mismatch");
     if (rec.state !== "triaged") return stateFailure(rec.state, requestId);
     // A valid signature is not enough: Redis state must agree.
     if (rec.intakeHash !== ticket.intakeHash || rec.questionsHash !== ticket.questionsHash) {
-      return fail("forbidden", requestId);
+      return forbid(deps, "diagnose", requestId, "stored_hashes_differ");
     }
   } catch {
     return fail("provider_unavailable", requestId);

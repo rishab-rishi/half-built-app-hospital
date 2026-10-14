@@ -55,3 +55,33 @@ describe("handler logging of a failed challenge", () => {
     expect(JSON.stringify(h.logs)).not.toMatch(/forged-SECRET-VALUE|sec-SECRET/);
   });
 });
+
+describe("handler logging of a refused (403) request", () => {
+  const reasons = (h: ReturnType<typeof makeHarness>) =>
+    h.logs.filter((l) => l.outcome === "forbidden_detail").map((l) => `${l.stage}:${l.detail}`);
+
+  it("says which check refused a triage request, without changing the visitor's answer", async () => {
+    const h = makeHarness();
+    const a = await h.admit();
+
+    const noCookie = await h.triage(a.caseId, "");
+    expect(noCookie.json.error).toBe("forbidden");
+
+    const unknownCase = await h.triage("A".repeat(22), a.cookie);
+    expect(unknownCase.json.error).toBe("forbidden");
+
+    const other = await h.admit(); // a second session
+    h.clock.ip = "203.0.113.55";
+    const stranger = await h.admit();
+    const crossed = await h.triage(a.caseId, stranger.cookie); // someone else's case id
+    expect(crossed.json.error).toBe("forbidden");
+    void other;
+
+    expect(reasons(h)).toEqual([
+      "triage:no_session_cookie",
+      "triage:case_not_found_or_expired",
+      "triage:case_session_mismatch",
+    ]);
+    expect(JSON.stringify(h.logs)).not.toContain(a.cookie);
+  });
+});
