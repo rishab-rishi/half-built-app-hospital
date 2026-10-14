@@ -21,6 +21,8 @@ describe("checkTurnstile reasons", () => {
     expect((await reason({ action: "admission" })).reason).toBe("action_mismatch:admission");
     expect((await reason({ cdata: "zzz" })).reason).toBe("cdata_mismatch");
     expect((await reason({ cdata: undefined })).reason).toBe("cdata_missing");
+    // What the real Siteverify answers when the widget was rendered without a cData option.
+    expect((await reason({ cdata: "" })).reason).toBe("cdata_missing");
     expect((await reason({ success: false, "error-codes": ["timeout-or-duplicate"] })).reason).toBe("rejected:timeout-or-duplicate");
     expect((await reason({}, reply({}, 500))).reason).toBe("http_500");
     expect((await reason({}, (async () => { throw new Error("boom"); }) as unknown as typeof fetch)).reason).toBe("error");

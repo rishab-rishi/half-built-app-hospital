@@ -33,7 +33,7 @@ function loadTurnstile(): Promise<TurnstileApi> {
 
 /**
  * One challenge per protected submission. Remount it (change `key`) after every use: tokens are
- * single-use. `cdata` binds the token to the current session for triage and diagnosis.
+ * single-use. `cdata` (sent to Cloudflare as `cData`) binds the token to the current session for triage and diagnosis.
  */
 export function TurnstileWidget({
   siteKey,
@@ -63,7 +63,9 @@ export function TurnstileWidget({
         widgetId = api.render(box.current, {
           sitekey: siteKey,
           action,
-          ...(cdata ? { cdata } : {}),
+          // Cloudflare's option is spelled cData. A lowercase "cdata" is silently ignored, the token then carries
+          // no session binding, and the server (correctly) refuses it.
+          ...(cdata ? { cData: cdata } : {}),
           theme: "auto",
           callback: (token: string) => callback.current(token),
           "expired-callback": () => callback.current(null),

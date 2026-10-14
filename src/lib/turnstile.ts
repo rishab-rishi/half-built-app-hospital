@@ -49,7 +49,8 @@ export async function checkTurnstile(e: TurnstileExpect): Promise<TurnstileResul
     if (data.hostname !== e.hostname) return { ok: false, reason: `hostname_mismatch:${safe(data.hostname, 80)}` };
     if (data.action !== e.action) return { ok: false, reason: `action_mismatch:${safe(data.action)}` };
     if (e.cdata !== undefined && data.cdata !== e.cdata) {
-      return { ok: false, reason: data.cdata === undefined ? "cdata_missing" : "cdata_mismatch" };
+      // Cloudflare answers with an empty cdata when the widget was rendered without one.
+      return { ok: false, reason: data.cdata === undefined || data.cdata === null || data.cdata === "" ? "cdata_missing" : "cdata_mismatch" };
     }
     return { ok: true };
   } catch (err) {

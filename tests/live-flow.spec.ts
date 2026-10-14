@@ -20,7 +20,9 @@ async function mockTurnstile(page: Page) {
       body: `window.turnstile = {
         render(el, o) {
           el.setAttribute("data-action", o.action);
-          el.setAttribute("data-cdata", o.cdata || "");
+          // Strict like the real widget: only the documented cData option counts. A lowercase cdata is ignored.
+          el.setAttribute("data-cdata", o.cData || "");
+          if (o.cdata) el.setAttribute("data-ignored-lowercase-cdata", o.cdata);
           setTimeout(() => o.callback("tok-" + o.action), 30);
           return "w" + Math.random();
         },
