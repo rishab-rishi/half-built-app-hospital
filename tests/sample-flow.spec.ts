@@ -118,3 +118,20 @@ test("the quality card shows the measured, versioned evaluation including misses
   await expect(card).not.toContainText("Evaluation pending");
   await expect(card).not.toContainText("Out of date");
 });
+
+test("browsing the samples sets no cookie and the privacy notice lists what is stored", async ({ page, context }) => {
+  await page.goto("/");
+  await page.getByRole("link", { name: /Open patient chart.*Booking App/ }).click();
+  await page.getByRole("button", { name: /View evidence/ }).first().click();
+  await page.locator("summary").first().click();
+  await page.goto("/admission");
+  // The claim on the privacy page: no cookie until a live assessment starts.
+  expect(await context.cookies()).toEqual([]);
+
+  await page.goto("/privacy");
+  const section = page.locator("article");
+  await expect(page.getByRole("heading", { name: "Cookies and browser storage" })).toBeVisible();
+  await expect(section).toContainText("__Host-hospital-session");
+  await expect(section).toContainText("hh:saved-case:v1");
+  await expect(section).toContainText("no analytics, advertising or tracking cookies");
+});

@@ -1,4 +1,9 @@
 import { PRIVACY_VERSION } from "@/lib/policy";
+import { SAVED_CASE_KEY } from "@/lib/saved-case";
+import { cookieName } from "@/lib/sessions";
+
+// Named from the code that sets them, so the notice cannot drift from what the site actually stores.
+const SESSION_COOKIE = cookieName(true);
 
 export const metadata = { title: "Privacy - Half-Built App Hospital" };
 
@@ -30,6 +35,34 @@ export default function PrivacyPage() {
         <li>Rate-limit counters keyed by a keyed hash of your IP address and your session: Redis, for the limit window plus a short cleanup period. A keyed hash is pseudonymous, not anonymous.</li>
         <li>Aggregate daily and monthly usage counters with no case content: Redis, until shortly after the period ends.</li>
         <li>Operational logs hold a request ID, stage, outcome, latency and token totals only, never your text, cookies or IP address. [Host log retention period to be confirmed.]</li>
+      </ul>
+      <h2>Cookies and browser storage</h2>
+      <p>
+        This site uses no analytics, advertising or tracking cookies, so there is no cookie banner. What it does use:
+      </p>
+      <ul>
+        <li>
+          <strong>
+            <code>{SESSION_COOKIE}</code>
+          </strong>
+          : one strictly necessary cookie, set only when you start a live assessment. It links the steps of your
+          assessment together and enforces the abuse limits; assessments cannot work without it. It is
+          secure-only, cannot be read by page scripts, is sent only to this site, and expires after at most 24
+          hours. Browsing the sample patients sets no cookie.
+        </li>
+        <li>
+          <strong>
+            <code>{SAVED_CASE_KEY}</code>
+          </strong>
+          : browser session storage, used only if you tick <em>Remember in this tab</em> (off by default). It keeps
+          your case in this tab so a refresh does not lose it. It stays on your device and is removed by{" "}
+          <em>Clear case</em> or by turning the option off.
+        </li>
+        <li>
+          Cloudflare Turnstile, the human check on the admissions page, runs Cloudflare&apos;s own script. What it
+          collects and stores is described in Cloudflare&apos;s{" "}
+          <a href="https://www.cloudflare.com/turnstile-privacy-policy/">Turnstile privacy addendum</a>.
+        </li>
       </ul>
       <h2>Providers</h2>
       <ul>
