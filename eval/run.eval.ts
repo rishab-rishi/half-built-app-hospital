@@ -185,14 +185,22 @@ it("evaluates the fixtures", async () => {
     providerRetries: retries,
     checks,
     limitations: [
+      process.env.EVAL_RAG === "0"
+        ? "Playbook retrieval was switched off for this run: no reference material was added to the diagnosis prompt."
+        : "Playbook reference material was added to the diagnosis prompt where the case matched an entry.",
+      ...(process.env.EVAL_RAG === "0"
+        ? []
+        : [
+            "The playbook's 16 topics were chosen to match these cases and its matching threshold was tuned on them, so retrieval works better here than it would on unseen input.",
+          ]),
       "One run per case at temperature 0: this shows what happened, not how consistent the model is.",
       "Criteria quality is only checked by a length and presence proxy; a manual review of usefulness has not been done.",
       "Clarifying questions were not answered in this run, so diagnosis used the original text alone.",
       "Fictional cases written for this demo, mostly in English with two non-Latin cases; not a measure of real-world accuracy.",
       "Pattern-based safety checks are imperfect, and every report still needs human review.",
       "Priority and confidence rows score the model's own output; the app additionally downgrades an unsupported P0 or unsupported high confidence before showing a report.",
-      "The prompt was tuned using these same cases, so the numbers are likely better than they would be on unseen input.",
-      "The prompt was revised once after a first run exposed vague criteria, P0 overuse, missing engineer-review advice and bare question ids. These results are for the revised prompt.",
+      `The prompt was tuned using these same ${evalFixtures.length} cases, so the numbers are likely better than they would be on unseen input.`,
+      "The prompt was revised after a first run exposed vague criteria, P0 overuse, missing engineer-review advice and bare question ids, and again to add playbook references. These results are for the latest prompt.",
     ],
   };
 

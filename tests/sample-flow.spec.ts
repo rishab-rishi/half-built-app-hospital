@@ -112,7 +112,7 @@ test("the quality card shows the measured, versioned evaluation including misses
   // The scope statement is always visible; the measured results (misses included) sit in a labelled disclosure.
   await expect(card).toContainText("no repository inspection, code execution, or security certification");
   await card.getByText("How this was measured, including what was not met").click();
-  await expect(card).toContainText("Measured 2026-10-09 on 18 fictional cases");
+  await expect(card).toContainText("Measured 2026-10-16 on 18 fictional cases");
   await expect(card).toContainText("not met:");
   await expect(card).toContainText("tuned using these same 18 cases");
   await expect(card).not.toContainText("Evaluation pending");

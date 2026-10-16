@@ -63,9 +63,11 @@ export function EvidenceToggle({
       >
         <p className="label-mono">Why this finding?</p>
         {sample && <p className="mt-2 text-[0.9375rem] font-semibold">Fictional sample - not an assessment of your app.</p>}
-        <p className="mt-2 text-[0.9375rem] text-muted-foreground">
-          Supplied text this finding points to. It is user-reported and has not been independently verified.
-        </p>
+        {hasSupplied && (
+          <p className="mt-2 text-[0.9375rem] text-muted-foreground">
+            Supplied text this finding points to. It is user-reported and has not been independently verified.
+          </p>
+        )}
         {hasReference && (
           <p className="mt-2 text-[0.9375rem] text-muted-foreground">
             Items marked Reference are general background from the app&apos;s playbook of common failure patterns.

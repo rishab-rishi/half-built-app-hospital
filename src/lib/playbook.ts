@@ -1,3 +1,4 @@
+import "./zod-config";
 import { z } from "zod";
 import entries from "@/data/playbook/entries.json";
 import type { EvidenceMap } from "./evidence";

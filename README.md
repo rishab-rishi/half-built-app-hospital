@@ -15,7 +15,8 @@ a human check, per-IP and per-session limits, and global budgets.
 
 - **Sample patients:** explore a full chart with no accounts: evidence drawer, recovery board, discharge checklist,
   and a Markdown export.
-- **Evidence you can inspect:** every observation, hypothesis and task points to the exact text you supplied. The
+- **Evidence you can inspect:** every observation, hypothesis and task points to the exact text you supplied, or, for
+  hypotheses and tasks only, to a labelled playbook reference. The
   model never supplies quotations; unknown references are removed and the report is marked incomplete.
 - **Reference playbook:** a curated file of common failure patterns (`src/data/playbook/entries.json`) is searched
   with plain keyword scoring, on the server, with no extra provider. The best-matching entries are added to the

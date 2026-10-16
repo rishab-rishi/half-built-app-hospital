@@ -91,7 +91,7 @@ test.describe("home page", () => {
     const details = page.locator("details", { hasText: "How this was measured" }).first();
     await expect(details).not.toHaveAttribute("open", "");
     await details.locator("summary").click();
-    await expect(details).toContainText("Measured 2026-10-09 on 18 fictional cases");
+    await expect(details).toContainText("Measured 2026-10-16 on 18 fictional cases");
     await expect(details).toContainText("not met:");
     await expect(details).toContainText("Known limitations");
   });
