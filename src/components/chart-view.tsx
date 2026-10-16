@@ -7,7 +7,7 @@ import { EvidenceToggle } from "@/components/evidence-panel";
 import { QualityCard } from "@/components/quality-card";
 import { RecoveryBoard } from "@/components/recovery-board";
 import { SampleModeBanner } from "@/components/sample-mode-banner";
-import type { EvidenceMap } from "@/lib/evidence";
+import { isReferenceId, type EvidenceMap } from "@/lib/evidence";
 import { downloadMarkdown, exportMarkdown } from "@/lib/export-markdown";
 import type { Intake, Report } from "@/lib/schemas";
 import { initTaskState, progress, type CaseTaskState } from "@/lib/task-state";
@@ -229,7 +229,7 @@ export function ChartView({
                       </span>
                       Confidence: {h.confidence}
                     </Badge>
-                    {h.evidenceIds.length === 0 && <Badge variant="destructive">Unconfirmed possibility</Badge>}
+                    {h.evidenceIds.every(isReferenceId) && <Badge variant="destructive">Unconfirmed possibility</Badge>}
                   </div>
                   <p className="mt-3 text-lg leading-snug font-medium break-words">{h.text}</p>
                   <p className="mt-2 break-words text-muted-foreground">{h.explanation}</p>

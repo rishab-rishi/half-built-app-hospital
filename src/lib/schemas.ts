@@ -67,7 +67,8 @@ export const answersSchema = z
   .max(LIMITS.answers);
 export type Answers = z.infer<typeof answersSchema>;
 
-const evidenceIds = z.array(z.string().min(1).max(40)).max(3);
+// Long enough for a playbook reference such as "kb:database-connection-intermittent#notWhen".
+const evidenceIds = z.array(z.string().min(1).max(64)).max(3);
 const confidence = z.enum(["low", "medium", "high"]);
 
 export const reportSchema = z.strictObject({

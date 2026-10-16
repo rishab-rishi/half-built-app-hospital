@@ -1,15 +1,17 @@
 // Live evaluation against the configured provider. Run with:  npm run eval
+// Playbook retrieval is on by default; set EVAL_RAG=0 for a baseline run without references.
 // Set EVAL_WRITE=1 to publish the aggregate result to src/data/evaluation-summary.json.
 // Set EVAL_RESULT_OUT=<path> to save the result for review first. Set EVAL_RAW_OUT=<path> to keep raw
 // model outputs locally (never committed).
 import { writeFileSync } from "node:fs";
 import { it } from "vitest";
 import { groqProvider } from "@/lib/ai";
-import { buildEvidenceMap } from "@/lib/evidence";
+import { prepareDiagnoseInput } from "@/lib/diagnose-input";
+import { buildEvidenceMap, isReferenceId } from "@/lib/evidence";
 import type { Evaluation } from "@/lib/evaluation";
 import { interpretDiagnosis, interpretTriage } from "@/lib/interpret";
 import { findUnsafeOutput } from "@/lib/output-checks";
-import { diagnoseMessages, PROMPT_VERSION, triageMessages } from "@/lib/prompts";
+import { PROMPT_VERSION, triageMessages } from "@/lib/prompts";
 import { findLikelySecret } from "@/lib/secrets";
 import { MAX_OUTPUT_TOKENS } from "@/lib/tokens";
 import { evalFixtures } from "./fixtures";
@@ -90,13 +92,16 @@ it("evaluates the fixtures", async () => {
     const triageText = (await run("triage", triageMessages(evidence))) ?? "";
     const triage = triageText ? interpretTriage(triageText) : ({ ok: false, reason: "error" } as const);
     const questions = triage.ok ? triage.value : [];
-    const diagnosisText = (await run("diagnose", diagnoseMessages(evidence, questions))) ?? "";
+    const input = prepareDiagnoseInput(evidence, questions, { retrieve: process.env.EVAL_RAG !== "0" });
+    const diagnosisText = (await run("diagnose", input.messages)) ?? "";
     const diagnosis = diagnosisText
-      ? interpretDiagnosis(diagnosisText, evidence)
+      ? interpretDiagnosis(diagnosisText, evidence, input.references)
       : ({ ok: false, reason: "error" } as const);
     results.set(f.id, { triage, diagnosis, triageText, diagnosisText });
     raw[f.id] = { triageText, diagnosisText };
-    console.log(`${f.id}: triage=${triage.ok ? "ok" : triage.reason} diagnosis=${diagnosis.ok ? "ok" : diagnosis.reason}`);
+    console.log(
+      `${f.id}: triage=${triage.ok ? "ok" : triage.reason} diagnosis=${diagnosis.ok ? "ok" : diagnosis.reason} references=${Object.keys(input.references).length} inputTokens=${input.inputTokens}`,
+    );
   }
 
   const modelCases = evalFixtures.filter((f) => !f.expectRejectedBeforeModel);
@@ -130,7 +135,11 @@ it("evaluates the fixtures", async () => {
       const rep = rawReport(r.diagnosisText);
       if (!rep || !r.diagnosis.ok) return false;
       if ((rep.limitations?.length ?? 0) < 1) return false;
-      if (rep.hypotheses?.some((h) => h.confidence === "high" && new Set(h.evidenceIds ?? []).size < 2)) return false;
+      if (rep.hypotheses?.some(
+          (h) =>
+            h.confidence === "high" &&
+            new Set((h.evidenceIds ?? []).filter((id) => typeof id === "string" && !isReferenceId(id))).size < 2,
+        )) return false;
       if (f.expectInsufficient) {
         return rep.assessmentStatus === "insufficient_information" || (rep.missingInformation?.length ?? 0) >= 2;
       }

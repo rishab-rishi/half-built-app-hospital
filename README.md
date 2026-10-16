@@ -17,6 +17,10 @@ a human check, per-IP and per-session limits, and global budgets.
   and a Markdown export.
 - **Evidence you can inspect:** every observation, hypothesis and task points to the exact text you supplied. The
   model never supplies quotations; unknown references are removed and the report is marked incomplete.
+- **Reference playbook:** a curated file of common failure patterns (`src/data/playbook/entries.json`) is searched
+  with plain keyword scoring, on the server, with no extra provider. The best-matching entries are added to the
+  diagnosis prompt as clearly labelled *Reference* material. A reference can back a hypothesis or task but never an
+  observation, never raises confidence, and is dropped first if the prompt would exceed the input cap.
 - **Checklist you own:** a task becomes *Verified* only after you tick every acceptance criterion and confirm you ran
   the checks. The app never claims a result is safe or certified.
 - **Local export:** the treatment plan downloads as Markdown from the browser. Untrusted text is fenced, control and

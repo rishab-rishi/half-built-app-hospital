@@ -1,4 +1,4 @@
-import { validateEvidence, type EvidenceMap } from "./evidence";
+import { isReferenceId, validateEvidence, type EvidenceMap } from "./evidence";
 import { findUnsafeOutput } from "./output-checks";
 import { reportSchema, triageOutputSchema, type Question, type Report } from "./schemas";
 
@@ -62,13 +62,15 @@ export function interpretTriage(text: string): Interpreted<Question[]> {
 
 /**
  * Conservative corrections applied after validation. Both only move toward caution:
- * - "high" confidence needs two pieces of evidence (none means "low", one means "medium").
+ * - "high" confidence needs two pieces of supplied evidence (none means "low", one means "medium").
  * - P0 needs an explicit "Reported urgent:" rationale; otherwise it becomes P1.
  */
 export function applyCautionRules(report: Report): { report: Report; adjusted: number } {
   let adjusted = 0;
   const hypotheses = report.hypotheses.map((h) => {
-    const cap = h.evidenceIds.length === 0 ? "low" : h.evidenceIds.length === 1 ? "medium" : "high";
+    // Playbook references are leads, not corroboration: only evidence the user supplied raises confidence.
+    const supplied = h.evidenceIds.filter((id) => !isReferenceId(id)).length;
+    const cap = supplied === 0 ? "low" : supplied === 1 ? "medium" : "high";
     if (h.confidence === "high" && cap !== "high") {
       adjusted++;
       return { ...h, confidence: cap as "low" | "medium" };
@@ -93,6 +95,7 @@ export function applyCautionRules(report: Report): { report: Report; adjusted: n
 export function interpretDiagnosis(
   text: string,
   evidence: EvidenceMap,
+  references: EvidenceMap = {},
 ): Interpreted<{ report: Report; dropped: number; adjusted: number }> {
   const json = parseJson(text);
   if (json === undefined) return { ok: false, reason: "json" };
@@ -102,7 +105,7 @@ export function interpretDiagnosis(
   }
   const unsafe = findUnsafeOutput(parsed.data);
   if (unsafe) return { ok: false, reason: "unsafe", detail: unsafe };
-  const { report, dropped } = validateEvidence(parsed.data, evidence);
+  const { report, dropped } = validateEvidence(parsed.data, evidence, references);
   const { report: cautious, adjusted } = applyCautionRules(report);
   return { ok: true, value: { report: cautious, dropped, adjusted } };
 }

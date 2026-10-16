@@ -1,7 +1,8 @@
 "use client";
 
 import { useId, useRef } from "react";
-import { describeEvidenceId, type EvidenceMap } from "@/lib/evidence";
+import { describeEvidenceId, isReferenceId, type EvidenceMap } from "@/lib/evidence";
+import { lookupReference } from "@/lib/playbook";
 
 /**
  * "Why this finding?": expands the exact supplied text a finding points to, right beside the finding.
@@ -24,6 +25,11 @@ export function EvidenceToggle({
   const panelId = useId();
   const button = useRef<HTMLButtonElement>(null);
   const shown = ids.slice(0, 3);
+  // Playbook references are general background, not text the user supplied, so they never count as support.
+  const hasSupplied = shown.some((id) => !isReferenceId(id));
+  const hasReference = shown.some(isReferenceId);
+  const textFor = (id: string) =>
+    Object.hasOwn(evidence, id) ? evidence[id] : (lookupReference(id)?.text ?? "Reference unavailable.");
 
   return (
     <div
@@ -60,12 +66,19 @@ export function EvidenceToggle({
         <p className="mt-2 text-[0.9375rem] text-muted-foreground">
           Supplied text this finding points to. It is user-reported and has not been independently verified.
         </p>
-        {shown.length === 0 ? (
+        {hasReference && (
+          <p className="mt-2 text-[0.9375rem] text-muted-foreground">
+            Items marked Reference are general background from the app&apos;s playbook of common failure patterns.
+            They are not facts about your app and may not apply.
+          </p>
+        )}
+        {!hasSupplied && (
           <p className="notice mt-3">
             <strong>Unconfirmed possibility.</strong> No supplied evidence directly supports this item, so treat it as
             something to check, not as an established observation.
           </p>
-        ) : (
+        )}
+        {shown.length > 0 && (
           <ul className="mt-3 space-y-3">
             {shown.map((id) => (
               <li key={id} className="rounded-md border border-border bg-paper p-3">
@@ -74,7 +87,7 @@ export function EvidenceToggle({
                   tabIndex={0}
                   className="mt-1.5 max-h-48 overflow-auto font-sans text-[0.9375rem] leading-relaxed break-words whitespace-pre-wrap"
                 >
-                  {Object.hasOwn(evidence, id) ? evidence[id] : "Reference unavailable."}
+                  {textFor(id)}
                 </pre>
               </li>
             ))}

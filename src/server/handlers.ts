@@ -19,7 +19,8 @@ import { buildEvidenceMap } from "@/lib/evidence";
 import { checkHeaders, readJsonBody, type GuardFailure } from "@/lib/guard";
 import type { ModelProvider } from "@/lib/ai";
 import { interpretDiagnosis, interpretTriage } from "@/lib/interpret";
-import { diagnoseMessages, PROMPT_VERSION, triageMessages, type ChatMessages } from "@/lib/prompts";
+import { prepareDiagnoseInput } from "@/lib/diagnose-input";
+import { PROMPT_VERSION, triageMessages, type ChatMessages } from "@/lib/prompts";
 import type { Store } from "@/lib/redis";
 import { answersSchema, intakeSchema, questionSchema } from "@/lib/schemas";
 import type { Intake } from "@/lib/schemas";
@@ -44,6 +45,8 @@ export type LogEvent = {
   promptVersion?: string;
   model?: string;
   totalTokens?: number;
+  /** How many playbook reference sections were placed in the prompt. */
+  references?: number;
   /** Fixed-vocabulary reason for a failed challenge (a Cloudflare error code or which comparison failed). */
   detail?: string;
 };
@@ -532,8 +535,7 @@ async function diagnoseFlow(req: Request, deps: Deps, requestId: string, extra: 
 
   if (findLikelySecret(textOfIntake(body.intake, body.answers))) return fail("secret_detected", requestId);
   const evidence = buildEvidenceMap(body.intake, body.answers);
-  const messages = diagnoseMessages(evidence, body.questions);
-  const inputTokens = estimateTokens(messages.system + messages.user);
+  const { messages, inputTokens, references } = prepareDiagnoseInput(evidence, body.questions);
   if (inputTokens > MAX_INPUT_TOKENS) return fail("too_large", requestId);
 
   if (!(await challenge(ctx, body.turnstileToken, "diagnose", sessionHash))) {
@@ -576,7 +578,9 @@ async function diagnoseFlow(req: Request, deps: Deps, requestId: string, extra: 
   extra.model = config.groq.model;
   extra.totalTokens = out.totalTokens;
 
-  const interpreted = interpretDiagnosis(out.text, evidence);
+  extra.references = Object.keys(references).length;
+
+  const interpreted = interpretDiagnosis(out.text, evidence, references);
   if (!interpreted.ok) {
     await finish("failed");
     return fail("invalid_result", requestId);

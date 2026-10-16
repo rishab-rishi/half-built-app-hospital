@@ -1,0 +1,357 @@
+[
+  {
+    "id": "form-submit-reloads-page",
+    "title": "Submitting a form reloads the single-page app",
+    "stacks": [
+      "react",
+      "next.js",
+      "vue",
+      "svelte",
+      "angular",
+      "javascript"
+    ],
+    "signals": [
+      "page reloads on submit",
+      "form clears when I click submit",
+      "single page app refreshes",
+      "submit handler not working"
+    ],
+    "sections": {
+      "cause": "A form usually triggers browser navigation unless its submit event is prevented. A handler attached only to a button click may miss keyboard submission, while an unintended submit button can trigger navigation from another action.",
+      "confirm": "In a local build, watch whether form submission creates a document navigation and whether the form's submit handler runs. Compare clicking the submit button with pressing Enter, and inspect the types of other buttons inside the form.",
+      "fix": "Handle submission on the form and prevent the browser's default navigation before asynchronous work starts. Give other buttons an explicit non-submit type. Locally, check that clicking and pressing Enter each submit once without reloading.",
+      "notWhen": "If no document navigation occurs and only part of the screen resets, component remounting or a state reset is a more likely explanation."
+    }
+  },
+  {
+    "id": "request-input-crashes-handler",
+    "title": "A request handler crashes when input is missing or empty",
+    "stacks": [
+      "any"
+    ],
+    "signals": [
+      "Cannot read properties of undefined",
+      "Cannot read properties of null",
+      "500 on empty form",
+      "missing field crashes server"
+    ],
+    "sections": {
+      "cause": "One common cause of a request crash is assuming a field exists and has the expected type before validating it. Missing bodies, null values, empty strings or malformed input can reach string operations or database calls that cannot accept them.",
+      "confirm": "Locally, exercise the handler with an absent body, a missing field, null, whitespace and an unexpected type. Inspect the first failing operation and whether parsing and validation return a controlled response before application logic starts.",
+      "fix": "Validate the parsed request at the handler boundary, distinguish required values from optional ones, and return a clear client error for invalid input. Locally, repeat the invalid cases and a valid request to check that none crashes the handler.",
+      "notWhen": "If valid input fails at the same operation, or the failure occurs before request parsing, investigate a dependency, configuration or startup failure instead."
+    }
+  },
+  {
+    "id": "request-body-too-large",
+    "title": "Large uploads or request bodies are rejected with status 413",
+    "stacks": [
+      "next.js",
+      "express",
+      "nginx",
+      "vercel",
+      "node.js"
+    ],
+    "signals": [
+      "413 Payload Too Large",
+      "413 Request Entity Too Large",
+      "small uploads work",
+      "request body too large",
+      "upload never reaches handler"
+    ],
+    "sections": {
+      "cause": "A 413 response often means a host, proxy or framework rejected the request body before the handler could process it. Each layer may have its own limit, and encoding or multipart overhead can make the request larger than the original file.",
+      "confirm": "In staging, compare a small upload with a larger one using non-sensitive files. Check which layer records the rejection and whether the handler is reached. Compare the complete request size with the configured limits at each layer.",
+      "fix": "Align supported request limits across the host, proxy and framework, or use a storage upload flow intended for larger files. Show a clear size message to users. In staging, verify an accepted upload and a controlled rejection above the supported size.",
+      "notWhen": "If tiny requests also fail, or the response is a permission error rather than 413, investigate access rules, routing or request formatting instead."
+    }
+  },
+  {
+    "id": "browser-specific-login-cookie",
+    "title": "Login fails or sessions disappear in only one browser",
+    "stacks": [
+      "safari",
+      "next.js",
+      "express",
+      "oauth"
+    ],
+    "signals": [
+      "login fails only in Safari",
+      "works in Chrome but not Safari",
+      "third-party cookies blocked",
+      "SameSite cookie rejected",
+      "login loop in one browser"
+    ],
+    "sections": {
+      "cause": "Browser-specific login failures often arise when a session depends on a cross-site cookie. SameSite and Secure attributes affect delivery, while Safari tracking prevention or third-party cookie restrictions may block a flow that another browser permits.",
+      "confirm": "In staging with test accounts, compare cookie rejection reasons and redirect destinations across browsers. Inspect cookie attributes and site context without exposing cookie values. Check whether the problem appears only in an embedded or cross-site flow.",
+      "fix": "Use a login flow compatible with browser cookie policies and set cookie scope and attributes for its site context. An engineer should verify the change and session protections in staging across affected browsers; successful login alone is insufficient evidence.",
+      "notWhen": "If the session cookie is stored and sent as expected but the server rejects it in every browser, investigate server-side session validation or account state instead."
+    }
+  },
+  {
+    "id": "stale-cache-after-write",
+    "title": "Saved changes do not appear in subsequent reads",
+    "stacks": [
+      "any"
+    ],
+    "signals": [
+      "old data after saving",
+      "refresh still shows stale data",
+      "changes appear later",
+      "cache not invalidated",
+      "database updated but page unchanged"
+    ],
+    "sections": {
+      "cause": "Stale reads after a successful write often come from a browser, framework, server or CDN cache that still holds the earlier result. Invalidating one cache may leave another intact, or the invalidation may target a different key from the read.",
+      "confirm": "In staging, verify that the write is committed, then compare the stored value with the response and displayed state. Inspect cache indicators and relevant cache keys to identify the first layer returning the older value.",
+      "fix": "Refresh or invalidate the relevant cache entries after the write commits, including dependent views, and align cache lifetimes with freshness needs. In staging, repeat a write followed by reads through each affected view to check when changes appear.",
+      "notWhen": "If the underlying record never changed, or only a replica returns old data while caches are current, investigate failed writes or replication delay instead."
+    }
+  },
+  {
+    "id": "date-only-timezone-shift",
+    "title": "A calendar date appears one day earlier or later",
+    "stacks": [
+      "any"
+    ],
+    "signals": [
+      "date off by one day",
+      "birthday shows previous day",
+      "UTC versus local time",
+      "date changes with timezone",
+      "midnight UTC"
+    ],
+    "sections": {
+      "cause": "A date-only value often shifts when software treats it as an instant at midnight UTC and then displays it in local time. The reverse conversion can also move a calendar day, especially when a date passes through several serialization steps.",
+      "confirm": "Locally, trace the original date-only text, stored representation and display conversion. Compare rendering in time zones on both sides of UTC, and check whether a timestamp was introduced for a value that represents only a calendar date.",
+      "fix": "Keep calendar dates as date-only values throughout storage and display, and convert actual instants using an explicit intended time zone. Locally, check representative dates across time zones and daylight-saving transitions where applicable.",
+      "notWhen": "If the stored calendar date is already wrong before any time conversion, investigate input mapping or date arithmetic rather than display time zones."
+    }
+  },
+  {
+    "id": "scheduled-job-missing-or-late",
+    "title": "A scheduled job never runs or runs at an unexpected time",
+    "stacks": [
+      "cron",
+      "vercel",
+      "node.js",
+      "serverless"
+    ],
+    "signals": [
+      "cron job not running",
+      "scheduled task runs at wrong time",
+      "cron timezone",
+      "job stopped after deploy",
+      "scheduler never invokes job"
+    ],
+    "sections": {
+      "cause": "A scheduled job often runs on the scheduler's time zone rather than the user's local time. It may also be absent from the deployed environment, exceed platform scheduling constraints, or rely on a process that stops when a serverless instance becomes idle.",
+      "confirm": "In staging, inspect the deployed schedule, its time zone, supported cadence and invocation history. Separate a missing invocation from a handler failure, and check whether the scheduling process remains active independently of incoming requests.",
+      "fix": "Use a persistent scheduler supported by the hosting platform, configure the intended time zone explicitly, and record invocation outcomes. In staging, observe scheduled runs across the expected time boundary and confirm the handler completes its work.",
+      "notWhen": "If invocation history shows the job started at the expected time, investigate handler errors, locking or downstream dependencies rather than schedule configuration."
+    }
+  },
+  {
+    "id": "client-state-lost-on-refresh",
+    "title": "Client selections or draft state disappear after refresh",
+    "stacks": [
+      "any"
+    ],
+    "signals": [
+      "state lost after refresh",
+      "cart empty on reload",
+      "draft disappears on refresh",
+      "local storage not restored",
+      "settings reset when page reloads"
+    ],
+    "sections": {
+      "cause": "Client state usually disappears on refresh when it lives only in memory. Persistence may also fail because writes never occur, storage is unavailable, or startup code overwrites a saved value with defaults before restoring it.",
+      "confirm": "Locally, follow a non-sensitive test value from the user action to its persistence location and back through startup restoration. Check storage errors and initialization order, including whether a default value is saved before restoration finishes.",
+      "fix": "Persist appropriate non-sensitive state and restore it before default initialization can overwrite it. Handle unavailable storage and incompatible saved formats explicitly. Locally, check refresh, reopening the app and the storage-unavailable path.",
+      "notWhen": "If the value is restored correctly and disappears only after a later response or navigation, investigate synchronization or component lifecycle behavior instead."
+    }
+  },
+  {
+    "id": "cloud-storage-upload-denied",
+    "title": "Cloud storage rejects an upload despite apparent access",
+    "stacks": [
+      "aws",
+      "s3",
+      "google cloud storage",
+      "azure blob storage"
+    ],
+    "signals": [
+      "AccessDenied on upload",
+      "403 Forbidden upload",
+      "bucket policy",
+      "object ownership error",
+      "encryption key access denied",
+      "wrong storage region"
+    ],
+    "sections": {
+      "cause": "An upload denial often reflects several access layers acting together: identity policy, bucket policy, object ownership and encryption permissions. A request sent to the wrong account or region may also target a different resource than intended.",
+      "confirm": "In staging, inspect the denied operation, effective identity, destination account and region using metadata without secret values. Compare identity and bucket policies, ownership requirements and encryption permissions for that specific upload.",
+      "fix": "Correct the destination or grant only the permissions required by the upload, including applicable ownership and encryption requirements. An engineer should verify the change in staging with permitted and denied uploads before considering access behavior understood.",
+      "notWhen": "If storage accepts the object and only the browser reports a cross-origin response error, investigate response access rules rather than upload permissions."
+    }
+  },
+  {
+    "id": "database-connection-intermittent",
+    "title": "Database connections fail intermittently under deployed load",
+    "stacks": [
+      "postgresql",
+      "mysql",
+      "prisma",
+      "serverless"
+    ],
+    "signals": [
+      "too many connections",
+      "connection pool timeout",
+      "remaining connection slots",
+      "database works locally",
+      "connection terminated unexpectedly",
+      "idle connection closed"
+    ],
+    "sections": {
+      "cause": "Intermittent connection errors often come from exhausted pools, connections held too long or serverless instances each creating a separate pool. Idle connections may also be closed by the database or network and then reused without recovery.",
+      "confirm": "In staging under representative load, compare active instances, pool waits and database connection counts with configured capacity. Inspect connection release paths and whether failures cluster during traffic bursts or the first query after idle.",
+      "fix": "Bound connection use across instances, release connections promptly and use pooling suited to the deployment lifecycle. Recover from stale connections without blindly repeating writes. In staging, check burst traffic and requests after an idle period.",
+      "notWhen": "If every connection attempt fails consistently with the same login or network error, investigate configuration and reachability before tuning pool capacity."
+    }
+  },
+  {
+    "id": "record-ownership-check-missing",
+    "title": "A user can retrieve records belonging to another user",
+    "stacks": [
+      "any"
+    ],
+    "signals": [
+      "seeing another user's data",
+      "changing ID shows someone else's record",
+      "missing ownership check",
+      "cross-user records",
+      "tenant data leak"
+    ],
+    "sections": {
+      "cause": "Cross-user record exposure often occurs when a server looks up a record by its identifier without checking the caller's ownership or permitted tenant scope. Hiding links in the interface does not restrict direct requests to the same record.",
+      "confirm": "In staging, use two isolated test accounts and synthetic records to compare permitted access with a request for the other account's identifier. Check read and write paths and whether server-side queries enforce the caller's authorized scope.",
+      "fix": "Enforce server-side ownership or tenant authorization on every record operation using trusted session context. An engineer should verify the change in staging across read and write paths with separate test accounts; one rejected request does not establish full coverage.",
+      "notWhen": "If server responses contain only permitted records but the interface displays another account's cached state, investigate client cache isolation and account-switch handling."
+    }
+  },
+  {
+    "id": "reset-link-reuse-or-no-expiry",
+    "title": "Password reset or magic links remain usable after use or expiry",
+    "stacks": [
+      "any"
+    ],
+    "signals": [
+      "password reset link works twice",
+      "magic link never expires",
+      "expired token accepted",
+      "reset token not marked used",
+      "reusable login link"
+    ],
+    "sections": {
+      "cause": "Reusable reset or magic links often mean the server does not check expiry and consumption at redemption. A separate check followed by a later update can also allow simultaneous requests to redeem the same single-use token more than once.",
+      "confirm": "In staging with test accounts, compare first use, reuse, expired redemption and simultaneous redemption attempts without recording token values. Inspect whether the server checks expiry and consumes the token atomically with the authorized action.",
+      "fix": "Enforce server-side expiry and atomic single-use redemption bound to the intended account and purpose. An engineer should verify the change in staging, including reuse and concurrent attempts; a successful first redemption alone does not establish correct protection.",
+      "notWhen": "If the original link is rejected after use and expiry but a new link is issued each time, investigate issuance behavior or confusing user messages instead."
+    }
+  },
+  {
+    "id": "payment-webhook-processed-twice",
+    "title": "Payment operations or webhook deliveries create duplicate effects",
+    "stacks": [
+      "stripe",
+      "paypal",
+      "webhooks"
+    ],
+    "signals": [
+      "charged twice",
+      "webhook processed twice",
+      "duplicate payment event",
+      "idempotency key missing",
+      "webhook retry",
+      "events arrive out of order"
+    ],
+    "sections": {
+      "cause": "Duplicate payment effects often arise when retried requests or repeated webhook deliveries are treated as new work. Missing durable idempotency records can allow repeated effects, while out-of-order events may move payment state backward.",
+      "confirm": "In a staging payment sandbox, compare synthetic operation identifiers, event identifiers and resulting records. Replay a valid test event and vary delivery order to check whether retries repeat effects or overwrite a later state.",
+      "fix": "Use stable operation idempotency and durable event deduplication with atomic state changes and ordering-aware transitions. An engineer should verify the change in a staging payment sandbox with retries and reordered events; deduplication alone does not establish payment correctness.",
+      "notWhen": "If distinct intentional operations created separate payments and no request or event was repeated, investigate the initiating workflow rather than delivery deduplication."
+    }
+  },
+  {
+    "id": "transactional-email-not-arriving",
+    "title": "Transactional email is requested but never reaches the inbox",
+    "stacks": [
+      "sendgrid",
+      "resend",
+      "mailgun",
+      "amazon ses",
+      "postmark",
+      "smtp"
+    ],
+    "signals": [
+      "transactional email not arriving",
+      "sender domain unverified",
+      "SPF or DKIM missing",
+      "email provider sandbox",
+      "send email succeeds but nothing arrives",
+      "email error swallowed"
+    ],
+    "sections": {
+      "cause": "Missing transactional email often reflects an unverified sender domain, absent SPF or DKIM records, or a provider sandbox restricting recipients. An app may also hide a send failure or confuse provider acceptance with delivery to the recipient.",
+      "confirm": "In staging with controlled test recipients, trace the send request through provider acceptance, rejection, bounce or delivery status. Check sender verification, SPF and DKIM status, sandbox restrictions and whether the app records send errors.",
+      "fix": "Complete sender verification, correct the required domain records and use the intended provider mode for controlled delivery. Preserve actionable send failures. In staging, check provider outcomes and actual receipt, including the test inbox's spam folder.",
+      "notWhen": "If the provider reports delivery and the controlled inbox receives the message, investigate recipient filtering or the user's expected address and notification settings."
+    }
+  },
+  {
+    "id": "date-filter-total-mismatch",
+    "title": "Totals change incorrectly when a date range filter is applied",
+    "stacks": [
+      "any"
+    ],
+    "signals": [
+      "wrong total after date filter",
+      "end date records missing",
+      "inclusive end date",
+      "date range sum incorrect",
+      "filter applied after aggregation",
+      "timezone boundary totals"
+    ],
+    "sections": {
+      "cause": "Date-filtered totals often disagree when the end date means midnight at the start of that day, time-zone boundaries differ, or filtering occurs after aggregation. These choices can omit the final day's records or include values outside the selected range.",
+      "confirm": "Locally, use a small dataset with known amounts just before, at and after each range boundary. Compare the selected records with the total, inspect the intended time zone and check whether date filtering occurs before grouping and summing.",
+      "fix": "Define the date range in the intended time zone with an inclusive start and exclusive start of the following day as the end. Filter records before aggregation. Locally, verify boundary records and known totals, including daylight-saving dates where relevant.",
+      "notWhen": "If the correct records are included but their sum is still wrong, investigate duplicate joins, numeric precision or currency handling instead of date boundaries."
+    }
+  },
+  {
+    "id": "serverless-first-request-slow",
+    "title": "The first serverless request after idle is unusually slow",
+    "stacks": [
+      "vercel",
+      "aws lambda",
+      "netlify",
+      "serverless",
+      "next.js"
+    ],
+    "signals": [
+      "first request slow after idle",
+      "serverless cold start",
+      "second request is fast",
+      "slow startup initialization",
+      "function far from database"
+    ],
+    "sections": {
+      "cause": "A slow first request after idle often includes serverless instance startup and expensive initialization before handling the request. Database connection setup adds more delay, especially when the function and database are in distant regions.",
+      "confirm": "In staging, compare request timings after idle with immediate follow-up requests. Separate instance startup, application initialization, connection setup and query time, and compare the function's region with the database's region.",
+      "fix": "Reduce startup work and loaded dependencies, defer optional initialization and reuse connections where the runtime supports it. Consider region alignment with the database. In staging, compare first-request and warm-request timings after the change.",
+      "notWhen": "If warm requests are equally slow or the delay is isolated to one query, investigate query performance, downstream latency or contention rather than instance startup."
+    }
+  }
+]

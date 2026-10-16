@@ -1,6 +1,10 @@
+import { lookupReference } from "./playbook";
 import type { Answers, Intake, ModelReport, Report } from "./schemas";
 
 export type EvidenceMap = Record<string, string>;
+
+/** Playbook references ("kb:<entry>#<section>") are background patterns, not facts the user supplied. */
+export const isReferenceId = (id: string) => id.startsWith("kb:");
 
 export function normaliseNewlines(s: string): string {
   return s.replace(/\r\n?/g, "\n");
@@ -30,19 +34,24 @@ export function buildEvidenceMap(intake: Intake, answers: Answers = []): Evidenc
  * report is flagged incomplete; they are never silently invented.
  * Hypotheses with no remaining evidence are kept (shown as unconfirmed);
  * observations with none are removed.
+ * Playbook references may back hypotheses and tasks, but only the ones retrieved for this case, and never an
+ * observation: observations are reported facts, and a reference is not a fact about the user's app.
  */
 export function validateEvidence(
   report: ModelReport,
   map: EvidenceMap,
+  references: EvidenceMap = {},
 ): { report: Report; dropped: number } {
   let dropped = 0;
-  const clean = (ids: string[]) => {
-    const ok = [...new Set(ids)].filter((id) => Object.hasOwn(map, id));
+  const clean = (ids: string[], allowReferences = true) => {
+    const ok = [...new Set(ids)].filter(
+      (id) => Object.hasOwn(map, id) || (allowReferences && Object.hasOwn(references, id)),
+    );
     dropped += ids.length - ok.length;
     return ok;
   };
   const observations = report.observations
-    .map((o) => ({ ...o, evidenceIds: clean(o.evidenceIds) }))
+    .map((o) => ({ ...o, evidenceIds: clean(o.evidenceIds, false) }))
     .filter((o) => {
       if (o.evidenceIds.length) return true;
       dropped++;
@@ -75,6 +84,7 @@ export function describeEvidenceId(id: string): string {
     symptoms: "Reported symptoms",
   };
   if (Object.hasOwn(fixed, id)) return fixed[id];
+  if (isReferenceId(id)) return `Reference: ${lookupReference(id)?.label ?? "unavailable"}`;
   const [kind, rest = ""] = id.split(":");
   if (kind === "stack") return `Stack item ${Number(rest) + 1}`;
   if (kind === "working") return `Working feature ${Number(rest) + 1}`;

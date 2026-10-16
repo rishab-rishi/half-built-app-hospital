@@ -1,4 +1,5 @@
-import type { EvidenceMap } from "./evidence";
+import { isReferenceId, type EvidenceMap } from "./evidence";
+import { lookupReference } from "./playbook";
 import type { Intake, Report } from "./schemas";
 import type { CaseTaskState } from "./task-state";
 
@@ -119,6 +120,10 @@ export function exportMarkdown(input: ExportInput): ExportResult {
   if (!refs.size) push("None.");
   for (const id of [...refs].sort()) {
     if (Object.hasOwn(evidence, id)) push(`### ${id}`, block(evidence[id]));
+    else if (isReferenceId(id)) {
+      const ref = lookupReference(id);
+      if (ref) push(`### ${id}`, "Reference: general background, not a fact about this app.", block(ref.text));
+    }
   }
 
   push("## Limitations");
